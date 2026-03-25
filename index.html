@@ -1,0 +1,2041 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Task Tracker</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+  background: #ffffff;
+  color: #4a4a4a;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+h1 {
+  text-align: center;
+  color: #7c6f9c;
+  font-size: 1.6rem;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.date-display {
+  text-align: center;
+  color: #a0a0a0;
+  font-size: 0.9rem;
+  margin-bottom: 24px;
+}
+
+/* Date Navigation */
+.date-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.date-nav-btn {
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.date-nav-btn:hover {
+  background: #b07575;
+}
+
+.date-nav-btn:disabled {
+  background: #e0d0d0;
+  cursor: not-allowed;
+}
+
+.date-nav-label {
+  font-size: 1rem;
+  color: #5a5a5a;
+  font-weight: 600;
+  min-width: 180px;
+  text-align: center;
+}
+
+.date-nav-today {
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 600;
+}
+
+.date-nav-today:hover {
+  background: #b07575;
+}
+
+.readonly-banner {
+  text-align: center;
+  background: #f5f0f0;
+  border: 1px solid #e8dede;
+  border-radius: 8px;
+  padding: 8px 16px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #999;
+}
+
+/* Summary Cards */
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: #fef6f0;
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+  border: 1px solid #fde8d8;
+}
+
+.summary-card:nth-child(2) {
+  background: #f0f4fe;
+  border-color: #d8e2fd;
+}
+
+.summary-card:nth-child(3) {
+  background: #f0fef4;
+  border-color: #d8fde2;
+}
+
+.summary-label {
+  font-size: 0.75rem;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+.summary-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #5a5a5a;
+}
+
+.summary-card.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+
+.summary-card.clickable:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+/* Goal Progress Bar */
+.goal-bar-container {
+  margin-top: 8px;
+}
+
+.goal-label {
+  font-size: 0.7rem;
+  color: #aaa;
+  margin-bottom: 3px;
+}
+
+.goal-bar-bg {
+  background: #e8e0e0;
+  border-radius: 6px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.goal-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.goal-bar-fill.study {
+  background: #9dd4a8;
+}
+
+.goal-bar-fill.dev {
+  background: #9db8d4;
+}
+
+/* Goal Input Modal */
+.goal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.goal-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  min-width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.goal-modal-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #5a5a5a;
+  margin-bottom: 16px;
+}
+
+.goal-modal-row {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  margin-bottom: 16px;
+}
+
+.goal-modal-row .field {
+  flex: 1;
+}
+
+.goal-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Input Row */
+.input-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+/* Input Form */
+.input-section {
+  background: #fafaff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #ececf5;
+  flex: 1;
+}
+
+.input-section h2 {
+  font-size: 1rem;
+  color: #7c6f9c;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr 60px 60px 80px;
+  gap: 10px;
+  align-items: end;
+}
+
+label {
+  display: block;
+  font-size: 0.75rem;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+input, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e0dff0;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: #4a4a4a;
+  outline: none;
+  transition: border 0.2s;
+}
+
+input:focus, select:focus {
+  border-color: #b8b0d4;
+}
+
+.btn-add {
+  padding: 10px 16px;
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 600;
+  height: 40px;
+}
+
+.btn-add:hover {
+  background: #b07575;
+}
+
+/* Project Management */
+.project-manager {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  align-items: end;
+}
+
+.project-manager .field { flex: 1; }
+
+.btn-project {
+  padding: 10px 14px;
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-weight: 600;
+  height: 40px;
+}
+
+.btn-project:hover {
+  background: #b07575;
+}
+
+/* Task Grid */
+#taskDisplay {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.project-group {
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1.5px solid #b0b0ba;
+  display: flex;
+  flex-direction: column;
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #fff;
+}
+
+.project-time {
+  font-size: 0.75rem;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+.task-list {
+  flex: 1;
+  background: #fff;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 14px;
+  background: #fff;
+  border-bottom: 1px solid #f5f5fa;
+  transition: background 0.15s;
+  flex-wrap: wrap;
+}
+
+.task-item:last-child {
+  border-bottom: none;
+}
+
+.task-item:hover {
+  background: #fafaff;
+}
+
+.task-name {
+  flex: 1;
+  font-size: 0.85rem;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.task-time {
+  font-size: 0.8rem;
+  color: #7c6f9c;
+  font-weight: 600;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.editable {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 2px 4px;
+  transition: background 0.15s;
+}
+
+.editable:hover {
+  background: #f0eef8;
+}
+
+.edit-input {
+  font-size: 0.9rem;
+  padding: 4px 8px;
+  border: 1px solid #b8b0d4;
+  border-radius: 6px;
+  outline: none;
+  background: #fff;
+  color: #4a4a4a;
+}
+
+.edit-input.time {
+  width: 70px;
+  text-align: right;
+}
+
+.btn-delete {
+  background: none;
+  border: none;
+  color: #dbb;
+  cursor: pointer;
+  font-size: 1.1rem;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.btn-delete:hover {
+  background: #fee;
+  color: #c88;
+}
+
+/* Advice Section */
+.advice-section {
+  margin-top: 24px;
+}
+
+.advice-section h2 {
+  font-size: 1rem;
+  color: #7c6f9c;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.advice-card {
+  background: #fff9f0;
+  border: 1px solid #fde8d0;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 10px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.advice-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.advice-card.warning {
+  background: #fff5f5;
+  border-color: #fdd8d8;
+}
+
+.advice-card.good {
+  background: #f0fef4;
+  border-color: #d0f0dd;
+}
+
+.advice-card.info {
+  background: #f0f4fe;
+  border-color: #d0ddfe;
+}
+
+/* Weekly Report */
+.weekly-report {
+  margin-top: 24px;
+}
+
+.weekly-report h2 {
+  font-size: 1rem;
+  color: #7c6f9c;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.weekly-report-container {
+  background: #fafaff;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #ececf5;
+}
+
+.weekly-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.weekly-bar-label {
+  font-size: 0.75rem;
+  color: #999;
+  width: 80px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.weekly-bar-bg {
+  flex: 1;
+  background: #ececf5;
+  border-radius: 6px;
+  height: 20px;
+  overflow: hidden;
+}
+
+.weekly-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: #c4b8e0;
+  transition: width 0.4s ease;
+  min-width: 0;
+}
+
+.weekly-bar-value {
+  font-size: 0.75rem;
+  color: #5a5a5a;
+  font-weight: 600;
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.weekly-bar-row.today .weekly-bar-fill {
+  background: #c48888;
+}
+
+.weekly-summary {
+  display: flex;
+  gap: 24px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #ececf5;
+}
+
+.weekly-summary-item {
+  text-align: center;
+}
+
+.weekly-summary-label {
+  font-size: 0.7rem;
+  color: #aaa;
+  margin-bottom: 2px;
+}
+
+.weekly-summary-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #5a5a5a;
+}
+
+/* Timeline */
+.timeline-section {
+  margin-top: 24px;
+}
+
+.timeline-section h2 {
+  font-size: 1rem;
+  color: #7c6f9c;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.donut-container {
+  background: #f8f8fd;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #ececf5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.timeline-section {
+  position: sticky;
+  top: 20px;
+}
+
+.donut-chart {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.donut-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.donut-total-label {
+  font-size: 0.7rem;
+  color: #aaa;
+}
+
+.donut-total-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #5a5a5a;
+}
+
+.donut-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.donut-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.donut-legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.donut-legend-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.donut-legend-name {
+  font-size: 0.85rem;
+  color: #5a5a5a;
+  font-weight: 600;
+}
+
+.donut-legend-detail {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+
+/* Color Picker Modal */
+.color-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.color-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px;
+  min-width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.color-modal-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #5a5a5a;
+  margin-bottom: 16px;
+}
+
+.color-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.color-swatch {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.color-swatch:hover {
+  transform: scale(1.15);
+}
+
+.color-swatch.selected {
+  border-color: #4a4a4a;
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #4a4a4a;
+}
+
+.color-custom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.color-custom input[type="color"] {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-custom span {
+  font-size: 0.8rem;
+  color: #999;
+}
+
+.color-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.btn-cancel {
+  padding: 8px 16px;
+  background: #eee;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  color: #666;
+}
+
+.btn-cancel:hover {
+  background: #ddd;
+}
+
+.project-header {
+  cursor: pointer;
+}
+
+.project-name-edit {
+  margin-bottom: 16px;
+}
+
+.project-name-edit label {
+  font-size: 0.75rem;
+  color: #999;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.project-name-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Empty state */
+.empty {
+  text-align: center;
+  color: #ccc;
+  padding: 40px;
+  font-size: 0.9rem;
+  grid-column: 1 / -1;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .summary {
+    grid-template-columns: 1fr;
+  }
+  #taskDisplay {
+    grid-template-columns: 1fr;
+  }
+  .input-row {
+    flex-direction: column;
+  }
+  .timer-section {
+    width: auto;
+  }
+}
+
+/* Pastel project colors */
+.pc-0 { background: #c4b8e0; }
+.pc-1 { background: #b8d4c4; }
+.pc-2 { background: #d4b8c4; }
+.pc-3 { background: #b8c8d4; }
+.pc-4 { background: #d4ccb8; }
+.pc-5 { background: #b8d4d4; }
+.pc-6 { background: #d4b8b8; }
+.pc-7 { background: #c4d4b8; }
+
+/* AI Summary */
+.ai-summary {
+  margin-top: 24px;
+}
+
+.ai-summary h2 {
+  font-size: 1rem;
+  color: #7c6f9c;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.ai-summary-container {
+  background: #fdf8ff;
+  border: 1px solid #e8d8f0;
+  border-radius: 16px;
+  padding: 20px 24px;
+  line-height: 1.8;
+  font-size: 0.9rem;
+  color: #5a5a5a;
+}
+
+.ai-comment {
+  margin-bottom: 10px;
+  padding-left: 4px;
+}
+
+.ai-comment:last-child {
+  margin-bottom: 0;
+}
+
+.ai-greeting {
+  font-weight: 600;
+  color: #7c6f9c;
+  margin-bottom: 14px;
+  font-size: 0.95rem;
+}
+
+.ai-score {
+  display: inline-block;
+  background: #c48888;
+  color: #fff;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-top: 12px;
+}
+
+/* Timer */
+.timer-section {
+  background: #fafaff;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid #ececf5;
+  width: 380px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.timer-section h2 {
+  font-size: 1rem;
+  color: #7c6f9c;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.timer-idle {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex: 1;
+  justify-content: center;
+}
+
+.timer-idle select {
+  padding: 14px 12px;
+  font-size: 1rem;
+}
+
+.btn-start {
+  padding: 18px 24px;
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.2s;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+.btn-start:hover {
+  background: #b07575;
+}
+
+.timer-running {
+  text-align: center;
+}
+
+.timer-project-name {
+  font-size: 1.1rem;
+  color: #5a5a5a;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.timer-display {
+  font-size: 3rem;
+  font-weight: 700;
+  color: #d4a0a0;
+  font-family: 'Courier New', monospace;
+  margin-bottom: 20px;
+  letter-spacing: 3px;
+}
+
+.timer-stop-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  align-items: end;
+  flex-wrap: wrap;
+}
+
+.btn-stop {
+  padding: 16px 32px;
+  background: #999;
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  font-weight: 700;
+  transition: background 0.2s;
+  letter-spacing: 1px;
+}
+
+.btn-stop:hover {
+  background: #777;
+}
+
+.timer-result {
+  text-align: center;
+  padding: 8px 0;
+}
+
+.timer-result-time {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #5a5a5a;
+  margin-bottom: 12px;
+}
+
+.timer-result-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.timer-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Daily Task Tracker</h1>
+  <div class="date-display" id="dateDisplay"></div>
+
+  <div class="date-nav">
+    <button class="date-nav-btn" id="prevDay" onclick="navigateDay(-1)">&#9664;</button>
+    <span class="date-nav-label" id="navDateLabel"></span>
+    <button class="date-nav-btn" id="nextDay" onclick="navigateDay(1)">&#9654;</button>
+    <button class="date-nav-today" id="todayBtn" onclick="goToToday()">今日</button>
+  </div>
+
+  <div id="readonlyBanner"></div>
+
+  <div class="summary">
+    <div class="summary-card">
+      <div class="summary-label">合計時間（勉強以外）</div>
+      <div class="summary-value" id="totalTime">0h</div>
+    </div>
+    <div class="summary-card clickable" onclick="openGoalModal('dev')">
+      <div class="summary-label">本日の個人開発時間</div>
+      <div class="summary-value" id="devTime">0分</div>
+      <div class="goal-bar-container" id="devGoalBar" style="display:none;">
+        <div class="goal-label" id="devGoalLabel"></div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill dev" id="devGoalFill"></div></div>
+      </div>
+    </div>
+    <div class="summary-card clickable" onclick="openGoalModal('study')">
+      <div class="summary-label">本日の勉強時間</div>
+      <div class="summary-value" id="studyTime">0分</div>
+      <div class="goal-bar-container" id="studyGoalBar" style="display:none;">
+        <div class="goal-label" id="studyGoalLabel"></div>
+        <div class="goal-bar-bg"><div class="goal-bar-fill study" id="studyGoalFill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="inputArea">
+  <div class="input-row">
+    <div class="input-section">
+      <h2>手動でタスクを追加</h2>
+    <div class="project-manager">
+      <div class="field">
+        <label>新しいプロジェクト</label>
+        <input type="text" id="newProject" placeholder="プロジェクト名...">
+      </div>
+      <button class="btn-project" onclick="addProject()">+ 追加</button>
+    </div>
+    <div class="form-row">
+      <div>
+        <label>プロジェクト</label>
+        <select id="taskProject"></select>
+      </div>
+      <div>
+        <label>タスク内容</label>
+        <input type="text" id="taskName" placeholder="何をしましたか？">
+      </div>
+      <div>
+        <label>時間</label>
+        <input type="text" id="taskHours" placeholder="0" inputmode="numeric" style="text-align:center;">
+      </div>
+      <div>
+        <label>分</label>
+        <input type="text" id="taskMinutes" value="30" inputmode="numeric" style="text-align:center;">
+      </div>
+      <button class="btn-add" onclick="addTask()">+ 追加</button>
+    </div>
+  </div>
+
+    <div class="timer-section">
+      <h2>タイマーで記録</h2>
+      <div id="timerContent"></div>
+    </div>
+  </div>
+  </div>
+
+  <div class="main-content">
+    <div>
+      <div id="taskDisplay"></div>
+
+      <div class="advice-section" id="adviceSection" style="display:none;">
+        <h2>アドバイス</h2>
+        <div id="adviceList"></div>
+      </div>
+
+      <div class="ai-summary" id="aiSummary" style="display:none;">
+        <h2>今日の総括</h2>
+        <div class="ai-summary-container" id="aiSummaryContent"></div>
+      </div>
+
+      <div class="weekly-report" id="weeklyReport" style="display:none;">
+        <h2>週間レポート</h2>
+        <div class="weekly-report-container" id="weeklyReportContent"></div>
+      </div>
+    </div>
+
+    <div class="timeline-section" id="timelineSection" style="display:none;">
+      <h2>時間配分</h2>
+      <div class="donut-container" id="donutChart"></div>
+    </div>
+  </div>
+</div>
+<div id="colorPickerContainer"></div>
+<div id="goalModalContainer"></div>
+
+<script>
+const COLORS = ['#c4b8e0','#b8d4c4','#d4b8c4','#b8c8d4','#d4ccb8','#b8d4d4','#d4b8b8','#c4d4b8'];
+const STORAGE_KEY = 'daily-task-tracker';
+const GOALS_KEY = 'daily-task-tracker-goals';
+
+// Current viewing date
+let viewingDate = todayKey();
+
+// Load all data (new multi-day format)
+let allData = loadAllData();
+let data = getDayData(viewingDate);
+
+// Goals
+let goals = loadGoals();
+
+// Timer state
+let timerState = 'idle'; // idle, running, result
+let timerProject = '';
+let timerStart = null;
+let timerInterval = null;
+let timerElapsed = 0;
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function dateKeyToDate(key) {
+  const parts = key.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
+function formatDateKey(key) {
+  const d = dateKeyToDate(key);
+  const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' };
+  return d.toLocaleDateString('ja-JP', options);
+}
+
+function addDays(dateKey, days) {
+  const d = dateKeyToDate(dateKey);
+  d.setDate(d.getDate() + days);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function isToday() {
+  return viewingDate === todayKey();
+}
+
+function loadAllData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return { days: {} };
+  const parsed = JSON.parse(saved);
+  // Migrate old format (flat with date, projects, tasks, projectColors)
+  if (parsed.date && parsed.projects && !parsed.days) {
+    const migrated = { days: {} };
+    migrated.days[parsed.date] = {
+      projects: parsed.projects,
+      tasks: parsed.tasks,
+      projectColors: parsed.projectColors || {}
+    };
+    return migrated;
+  }
+  if (!parsed.days) return { days: {} };
+  return parsed;
+}
+
+function getDayData(dateKey) {
+  if (!allData.days[dateKey]) {
+    allData.days[dateKey] = { projects: [], tasks: [], projectColors: {} };
+  }
+  if (!allData.days[dateKey].projectColors) allData.days[dateKey].projectColors = {};
+  return allData.days[dateKey];
+}
+
+function saveData() {
+  allData.days[viewingDate] = data;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+}
+
+function loadGoals() {
+  const saved = localStorage.getItem(GOALS_KEY);
+  if (saved) return JSON.parse(saved);
+  return { study: 0, dev: 0 };
+}
+
+function saveGoals() {
+  localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
+}
+
+// Date navigation
+function navigateDay(offset) {
+  const newDate = addDays(viewingDate, offset);
+  if (newDate > todayKey()) return;
+  viewingDate = newDate;
+  data = getDayData(viewingDate);
+  render();
+  if (isToday() && timerState === 'idle') renderTimer();
+}
+
+function goToToday() {
+  viewingDate = todayKey();
+  data = getDayData(viewingDate);
+  render();
+  if (timerState === 'idle') renderTimer();
+}
+
+// Goal modal
+function openGoalModal(type) {
+  const label = type === 'study' ? '勉強時間' : '個人開発時間';
+  const current = goals[type] || 0;
+  const currentH = Math.floor(current / 60);
+  const currentM = current % 60;
+
+  let html = '<div class="goal-overlay" onclick="if(event.target===this)closeGoalModal()">';
+  html += '<div class="goal-modal">';
+  html += `<div class="goal-modal-title">${label}の目標を設定</div>`;
+  html += '<div class="goal-modal-row">';
+  html += '<div class="field"><label>時間</label>';
+  html += `<input type="number" id="goalHours" value="${currentH}" min="0" style="text-align:center;"></div>`;
+  html += '<div class="field"><label>分</label>';
+  html += `<input type="number" id="goalMinutes" value="${currentM}" min="0" max="59" style="text-align:center;"></div>`;
+  html += '</div>';
+  html += '<div class="goal-modal-buttons">';
+  html += `<button class="btn-cancel" onclick="clearGoal('${type}')">リセット</button>`;
+  html += `<button class="btn-add" onclick="saveGoalFromModal('${type}')">保存</button>`;
+  html += '</div></div></div>';
+
+  document.getElementById('goalModalContainer').innerHTML = html;
+}
+
+function closeGoalModal() {
+  document.getElementById('goalModalContainer').innerHTML = '';
+}
+
+function saveGoalFromModal(type) {
+  const h = parseInt(document.getElementById('goalHours').value) || 0;
+  const m = parseInt(document.getElementById('goalMinutes').value) || 0;
+  goals[type] = h * 60 + m;
+  saveGoals();
+  closeGoalModal();
+  render();
+}
+
+function clearGoal(type) {
+  goals[type] = 0;
+  saveGoals();
+  closeGoalModal();
+  render();
+}
+
+function renderTimer() {
+  const container = document.getElementById('timerContent');
+  if (timerState === 'idle') {
+    let html = '<div class="timer-idle">';
+    html += '<div class="field"><label>プロジェクトを選択</label><select id="timerProject">';
+    html += '<option value="">-- 選択 --</option>';
+    data.projects.forEach(p => {
+      html += `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`;
+    });
+    html += '</select></div>';
+    html += '<button class="btn-start" onclick="startTimer()">作業開始</button>';
+    html += '</div>';
+    container.innerHTML = html;
+  } else if (timerState === 'running') {
+    let html = '<div class="timer-running">';
+    html += `<div class="timer-project-name">${escapeHtml(timerProject)} の作業中...</div>`;
+    html += `<div class="timer-display timer-pulse" id="timerDisplay">${formatElapsed(timerElapsed)}</div>`;
+    html += '<button class="btn-stop" onclick="stopTimer()">ストップ</button>';
+    html += '</div>';
+    container.innerHTML = html;
+  } else if (timerState === 'result') {
+    const mins = Math.max(1, Math.round(timerElapsed / 60));
+    let html = '<div class="timer-result">';
+    html += `<div class="timer-result-time">${escapeHtml(timerProject)}：${formatTime(mins)}</div>`;
+    html += '<div class="timer-result-row">';
+    html += `<input type="text" id="timerTaskName" placeholder="何をしましたか？" class="edit-input" style="flex:1;">`;
+    html += `<button class="btn-add" onclick="saveTimerTask(${mins})">+ 追加</button>`;
+    html += '<button class="btn-cancel" onclick="resetTimer()">キャンセル</button>';
+    html += '</div></div>';
+    container.innerHTML = html;
+  }
+}
+
+function formatElapsed(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+function startTimer() {
+  const select = document.getElementById('timerProject');
+  const project = select.value;
+  if (!project) { alert('プロジェクトを選んでください。'); return; }
+  timerProject = project;
+  timerStart = Date.now();
+  timerElapsed = 0;
+  timerState = 'running';
+  renderTimer();
+  timerInterval = setInterval(() => {
+    timerElapsed = Math.floor((Date.now() - timerStart) / 1000);
+    const display = document.getElementById('timerDisplay');
+    if (display) display.textContent = formatElapsed(timerElapsed);
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerElapsed = Math.floor((Date.now() - timerStart) / 1000);
+  timerState = 'result';
+  renderTimer();
+}
+
+function saveTimerTask(mins) {
+  const name = document.getElementById('timerTaskName').value.trim();
+  if (!name) { alert('タスク内容を書いてください。'); return; }
+  // Always save timer tasks to today
+  const todayData = getDayData(todayKey());
+  todayData.tasks.push({ project: timerProject, name, time: mins, id: Date.now() });
+  allData.days[todayKey()] = todayData;
+  if (isToday()) data = todayData;
+  saveData();
+  resetTimer();
+  render();
+}
+
+function resetTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+  timerState = 'idle';
+  timerProject = '';
+  timerStart = null;
+  timerElapsed = 0;
+  renderTimer();
+}
+
+function getProjectColor(project) {
+  if (data.projectColors && data.projectColors[project]) {
+    return data.projectColors[project];
+  }
+  const idx = data.projects.indexOf(project);
+  return COLORS[idx % COLORS.length];
+}
+
+function formatTime(minutes) {
+  if (minutes < 60) return `${minutes}分`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}時間${m}分` : `${h}時間`;
+}
+
+function addProject() {
+  if (!isToday()) return;
+  const input = document.getElementById('newProject');
+  const name = input.value.trim();
+  if (!name) return;
+  if (data.projects.includes(name)) {
+    alert('このプロジェクトは既に存在します。');
+    return;
+  }
+  data.projects.push(name);
+  saveData();
+  input.value = '';
+  render();
+}
+
+function addTask() {
+  if (!isToday()) return;
+  const project = document.getElementById('taskProject').value;
+  const name = document.getElementById('taskName').value.trim();
+  const hoursVal = document.getElementById('taskHours').value;
+  const minutesVal = document.getElementById('taskMinutes').value;
+  const hours = hoursVal === '' ? 0 : parseInt(hoursVal);
+  const minutes = minutesVal === '' ? 0 : parseInt(minutesVal);
+  const time = (isNaN(hours) ? 0 : hours) * 60 + (isNaN(minutes) ? 0 : minutes);
+
+  if (!project) { alert('プロジェクトを選んでください。'); return; }
+  if (!name) { alert('タスク内容を書いてください。'); return; }
+  if (time < 1) { alert('1分以上を入力してください。'); return; }
+
+  data.tasks.push({ project, name, time, id: Date.now() });
+  saveData();
+
+  document.getElementById('taskName').value = '';
+  document.getElementById('taskHours').value = '';
+  document.getElementById('taskMinutes').value = '';
+  render();
+}
+
+function deleteTask(id) {
+  if (!isToday()) return;
+  data.tasks = data.tasks.filter(t => t.id !== id);
+  saveData();
+  render();
+}
+
+function generateAdvice() {
+  const advices = [];
+  const projectTimes = {};
+
+  data.tasks.forEach(t => {
+    projectTimes[t.project] = (projectTimes[t.project] || 0) + t.time;
+  });
+
+  const totalMinutes = data.tasks.reduce((s, t) => s + t.time, 0);
+
+  // Goal reached messages
+  const studyMinutes = data.tasks
+    .filter(t => t.project.includes('勉強'))
+    .reduce((s, t) => s + t.time, 0);
+  const devMinutes = data.tasks
+    .filter(t => t.project.includes('開発'))
+    .reduce((s, t) => s + t.time, 0);
+
+  if (goals.study > 0 && studyMinutes >= goals.study) {
+    advices.push({
+      type: 'good',
+      icon: '🎉',
+      text: `勉強時間の目標（${formatTime(goals.study)}）を達成しました！おめでとうございます！`
+    });
+  }
+  if (goals.dev > 0 && devMinutes >= goals.dev) {
+    advices.push({
+      type: 'good',
+      icon: '🎉',
+      text: `個人開発時間の目標（${formatTime(goals.dev)}）を達成しました！おめでとうございます！`
+    });
+  }
+
+  // Per-task advice
+  data.tasks.forEach(t => {
+    if (t.time >= 120) {
+      advices.push({
+        type: 'warning',
+        icon: '⏰',
+        text: `「${t.name}」（${t.project}）に${formatTime(t.time)}かかっています。もっと小さなタスクに分割できませんか？ポモドーロ・テクニック（25分区切り）を試してみてください。`
+      });
+    } else if (t.time >= 60) {
+      advices.push({
+        type: 'info',
+        icon: '💡',
+        text: `「${t.name}」（${t.project}）に${formatTime(t.time)}かかっています。繰り返し発生するなら、テンプレートやチェックリストの作成を検討してみてください。`
+      });
+    }
+  });
+
+  // Project-level advice
+  Object.entries(projectTimes).forEach(([project, time]) => {
+    if (time > 240) {
+      advices.push({
+        type: 'warning',
+        icon: '🔥',
+        text: `${project}は今日合計${formatTime(time)}です。1つのプロジェクトに4時間以上かかっています。他のプロジェクトは大丈夫ですか？`
+      });
+    }
+    const ratio = totalMinutes > 0 ? (time / totalMinutes * 100) : 0;
+    if (ratio > 70 && Object.keys(projectTimes).length > 1) {
+      advices.push({
+        type: 'info',
+        icon: '⚖️',
+        text: `${project}が1日の${Math.round(ratio)}%を占めています。このバランスは意図的ですか？`
+      });
+    }
+  });
+
+  // General advice
+  if (totalMinutes > 480) {
+    advices.push({
+      type: 'warning',
+      icon: '😴',
+      text: `今日は${formatTime(totalMinutes)}も記録しています（8時間超え）。休憩も忘れずに！`
+    });
+  }
+
+  if (data.tasks.length > 0 && totalMinutes > 0) {
+    const avg = Math.round(totalMinutes / data.tasks.length);
+    if (avg < 15) {
+      advices.push({
+        type: 'info',
+        icon: '🔍',
+        text: `タスクの平均時間は${avg}分です。短すぎるタスクが多いと、切り替えコストがかかります。似たタスクをまとめて処理してみてください。`
+      });
+    }
+  }
+
+  if (data.tasks.length >= 3 && advices.length === 0) {
+    advices.push({
+      type: 'good',
+      icon: '✨',
+      text: '今日の時間配分はバランスが良いです。この調子で！'
+    });
+  }
+
+  return advices;
+}
+
+function getDayTotalMinutes(dateKey) {
+  const dayData = allData.days[dateKey];
+  if (!dayData || !dayData.tasks) return 0;
+  return dayData.tasks.reduce((s, t) => s + t.time, 0);
+}
+
+function renderAiSummary() {
+  const section = document.getElementById('aiSummary');
+  const container = document.getElementById('aiSummaryContent');
+
+  if (data.tasks.length < 1) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  const totalMinutes = data.tasks.reduce((s, t) => s + t.time, 0);
+  const studyMinutes = data.tasks.filter(t => t.project.includes('勉強')).reduce((s, t) => s + t.time, 0);
+  const devMinutes = data.tasks.filter(t => t.project.includes('開発')).reduce((s, t) => s + t.time, 0);
+  const workMinutes = totalMinutes - studyMinutes;
+  const projectTimes = {};
+  data.tasks.forEach(t => {
+    projectTimes[t.project] = (projectTimes[t.project] || 0) + t.time;
+  });
+  const projectCount = Object.keys(projectTimes).length;
+  const sortedProjects = Object.entries(projectTimes).sort((a, b) => b[1] - a[1]);
+  const topProject = sortedProjects[0];
+  const topRatio = totalMinutes > 0 ? Math.round(topProject[1] / totalMinutes * 100) : 0;
+  const taskCount = data.tasks.length;
+  const avgTime = Math.round(totalMinutes / taskCount);
+
+  const isToday = viewingDate === todayKey();
+  const comments = [];
+
+  // Greeting
+  const hour = new Date().getHours();
+  let greeting = '';
+  if (isToday) {
+    if (hour < 12) greeting = 'おはよう！今日もお疲れさま。';
+    else if (hour < 18) greeting = 'お疲れさま！午後も頑張ってるね。';
+    else greeting = 'お疲れさま！今日の振り返りだよ。';
+  } else {
+    greeting = 'この日の振り返りです。';
+  }
+
+  // Total time comment
+  if (totalMinutes >= 600) {
+    comments.push('今日は10時間以上も稼働してる！すごい集中力だけど、体のケアも大事にしてね。');
+  } else if (totalMinutes >= 480) {
+    comments.push(`合計${formatTime(totalMinutes)}、しっかり1日働いたね。よく頑張りました！`);
+  } else if (totalMinutes >= 300) {
+    comments.push(`合計${formatTime(totalMinutes)}。いいペースで進んでるね。`);
+  } else if (totalMinutes >= 120) {
+    comments.push(`今日は${formatTime(totalMinutes)}の記録。コンパクトだけど、集中できた時間があれば十分！`);
+  } else if (totalMinutes > 0) {
+    comments.push(`今日は${formatTime(totalMinutes)}だけだったね。少ない日があってもOK、無理せずいこう。`);
+  }
+
+  // Study comment
+  if (goals.study && goals.study > 0) {
+    if (studyMinutes >= goals.study) {
+      comments.push(`勉強目標${formatTime(goals.study)}をクリア！${formatTime(studyMinutes)}も勉強できたね。この習慣、最高！`);
+    } else if (studyMinutes > 0) {
+      const remaining = goals.study - studyMinutes;
+      comments.push(`勉強は${formatTime(studyMinutes)}。目標まであと${formatTime(remaining)}。もう少しだよ！`);
+    } else {
+      comments.push('今日は勉強時間が0だったね。明日は少しでも時間を作ってみよう。5分でもOK！');
+    }
+  } else {
+    if (studyMinutes > 0) {
+      comments.push(`勉強に${formatTime(studyMinutes)}使えたね。学び続ける姿勢がすばらしい！`);
+    } else if (data.projects.some(p => p.includes('勉強'))) {
+      comments.push('今日は勉強できなかったね。明日は少しでも時間を取ってみよう。');
+    }
+  }
+
+  // Dev comment
+  if (goals.dev && goals.dev > 0) {
+    if (devMinutes >= goals.dev) {
+      comments.push(`個人開発目標${formatTime(goals.dev)}を達成！プロダクトが着実に前に進んでるね。`);
+    } else if (devMinutes > 0) {
+      comments.push(`個人開発は${formatTime(devMinutes)}。目標にはもう少しだけど、手を動かしたことが大事！`);
+    } else {
+      comments.push('今日は個人開発の時間が取れなかったね。忙しい日もあるよね。');
+    }
+  } else if (devMinutes > 0) {
+    comments.push(`個人開発に${formatTime(devMinutes)}！自分のプロダクトを育てる時間、大事にしていこう。`);
+  }
+
+  // Project balance
+  if (projectCount >= 4) {
+    comments.push(`${projectCount}つのプロジェクトに取り組んだね。マルチタスクをうまくこなしてる！`);
+  } else if (projectCount === 1 && totalMinutes >= 180) {
+    comments.push(`今日は「${topProject[0]}」に集中した1日だったね。深く没頭できた？`);
+  }
+
+  if (projectCount >= 2 && topRatio >= 70) {
+    comments.push(`「${topProject[0]}」が全体の${topRatio}%を占めてるね。意図的ならOK、そうでなければ他のプロジェクトも気にかけてみて。`);
+  } else if (projectCount >= 3 && topRatio <= 40) {
+    comments.push('今日はバランスよくいろんなプロジェクトに取り組めたね。');
+  }
+
+  // Task granularity
+  if (avgTime < 15 && taskCount >= 5) {
+    comments.push('細かいタスクが多い1日だったね。似たタスクをまとめると、切り替えのロスが減るかも。');
+  } else if (avgTime >= 90 && taskCount >= 2) {
+    comments.push('1つ1つのタスクにしっかり時間をかけてるね。大きいタスクは途中で区切りを入れると振り返りやすいよ。');
+  }
+
+  // Yesterday comparison
+  const yesterday = new Date(viewingDate);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth()+1).padStart(2,'0')}-${String(yesterday.getDate()).padStart(2,'0')}`;
+  const yData = getDayData(yKey);
+  const yTotal = yData.tasks.reduce((s, t) => s + t.time, 0);
+  if (yTotal > 0) {
+    const diff = totalMinutes - yTotal;
+    if (diff > 60) {
+      comments.push(`昨日より${formatTime(diff)}多く活動できたね。調子いい！`);
+    } else if (diff < -60) {
+      comments.push(`昨日より${formatTime(Math.abs(diff))}少なめ。ペースを落とす日も大事だよ。`);
+    } else {
+      comments.push('昨日と同じくらいのペース。安定してていい感じ！');
+    }
+  }
+
+  // Productivity score
+  let score = 50;
+  if (totalMinutes >= 300) score += 10;
+  if (totalMinutes >= 480) score += 10;
+  if (studyMinutes > 0) score += 10;
+  if (devMinutes > 0) score += 5;
+  if (goals.study && studyMinutes >= goals.study) score += 10;
+  if (goals.dev && devMinutes >= goals.dev) score += 10;
+  if (projectCount >= 3) score += 5;
+  if (avgTime < 10 && taskCount >= 5) score -= 10;
+  if (totalMinutes >= 600) score -= 5;
+  score = Math.min(100, Math.max(0, score));
+
+  let scoreLabel = '';
+  if (score >= 90) scoreLabel = '最高の1日！';
+  else if (score >= 75) scoreLabel = 'とても充実した1日！';
+  else if (score >= 60) scoreLabel = 'いい1日！';
+  else if (score >= 40) scoreLabel = 'まずまずの1日';
+  else scoreLabel = 'のんびりした1日';
+
+  let html = `<div class="ai-greeting">${greeting}</div>`;
+  comments.forEach(c => {
+    html += `<div class="ai-comment">${c}</div>`;
+  });
+  html += `<div style="margin-top:14px;"><span class="ai-score">${scoreLabel}（${score}点）</span></div>`;
+
+  container.innerHTML = html;
+}
+
+function renderWeeklyReport() {
+  const section = document.getElementById('weeklyReport');
+  if (!isToday()) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  const container = document.getElementById('weeklyReportContent');
+  const today = todayKey();
+  const days = [];
+  for (let i = 6; i >= 0; i--) {
+    days.push(addDays(today, -i));
+  }
+
+  const dayTotals = days.map(d => ({ key: d, minutes: getDayTotalMinutes(d) }));
+  const maxMinutes = Math.max(...dayTotals.map(d => d.minutes), 1);
+  const totalWeekMinutes = dayTotals.reduce((s, d) => s + d.minutes, 0);
+  const daysWithData = dayTotals.filter(d => d.minutes > 0).length;
+  const avgMinutes = daysWithData > 0 ? Math.round(totalWeekMinutes / daysWithData) : 0;
+
+  const weekdayNames = ['日', '月', '火', '水', '木', '金', '土'];
+
+  let html = '';
+  dayTotals.forEach(d => {
+    const date = dateKeyToDate(d.key);
+    const dayLabel = `${date.getMonth()+1}/${date.getDate()}(${weekdayNames[date.getDay()]})`;
+    const pct = maxMinutes > 0 ? (d.minutes / maxMinutes * 100) : 0;
+    const isCurrentDay = d.key === today;
+    html += `<div class="weekly-bar-row${isCurrentDay ? ' today' : ''}">`;
+    html += `<span class="weekly-bar-label">${dayLabel}</span>`;
+    html += `<div class="weekly-bar-bg"><div class="weekly-bar-fill" style="width:${pct}%"></div></div>`;
+    html += `<span class="weekly-bar-value">${d.minutes > 0 ? formatTime(d.minutes) : '-'}</span>`;
+    html += '</div>';
+  });
+
+  html += '<div class="weekly-summary">';
+  html += '<div class="weekly-summary-item">';
+  html += '<div class="weekly-summary-label">週間合計</div>';
+  html += `<div class="weekly-summary-value">${formatTime(totalWeekMinutes)}</div>`;
+  html += '</div>';
+  html += '<div class="weekly-summary-item">';
+  html += '<div class="weekly-summary-label">1日平均</div>';
+  html += `<div class="weekly-summary-value">${avgMinutes > 0 ? formatTime(avgMinutes) : '-'}</div>`;
+  html += '</div>';
+  html += '</div>';
+
+  container.innerHTML = html;
+}
+
+function render() {
+  // Date display
+  const dateDisplay = document.getElementById('dateDisplay');
+  const d = dateKeyToDate(viewingDate);
+  const options = { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' };
+  dateDisplay.textContent = d.toLocaleDateString('ja-JP', options);
+
+  // Date nav label
+  document.getElementById('navDateLabel').textContent = formatDateKey(viewingDate);
+  document.getElementById('nextDay').disabled = isToday();
+  document.getElementById('todayBtn').style.display = isToday() ? 'none' : 'inline-block';
+
+  // Readonly banner and input area
+  const banner = document.getElementById('readonlyBanner');
+  const inputArea = document.getElementById('inputArea');
+  if (!isToday()) {
+    banner.innerHTML = '<div class="readonly-banner">過去の記録を閲覧中です（編集はできません）</div>';
+    inputArea.style.display = 'none';
+  } else {
+    banner.innerHTML = '';
+    inputArea.style.display = 'block';
+  }
+
+  // Project select (only if today)
+  if (isToday()) {
+    const select = document.getElementById('taskProject');
+    const currentVal = select.value;
+    select.innerHTML = '<option value="">-- 選択 --</option>';
+    data.projects.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p;
+      opt.textContent = p;
+      select.appendChild(opt);
+    });
+    if (currentVal && data.projects.includes(currentVal)) select.value = currentVal;
+  }
+
+  // Summary
+  const totalMinutes = data.tasks.reduce((s, t) => s + t.time, 0);
+  const studyMinutes = data.tasks
+    .filter(t => t.project.includes('勉強'))
+    .reduce((s, t) => s + t.time, 0);
+  const workMinutes = totalMinutes - studyMinutes;
+  const devMinutes = data.tasks
+    .filter(t => t.project.includes('開発'))
+    .reduce((s, t) => s + t.time, 0);
+
+  document.getElementById('totalTime').textContent = formatTime(workMinutes);
+  document.getElementById('devTime').textContent = formatTime(devMinutes);
+  document.getElementById('studyTime').textContent = formatTime(studyMinutes);
+
+  // Goal progress bars
+  renderGoalBar('study', studyMinutes);
+  renderGoalBar('dev', devMinutes);
+
+  // Task display grouped by project
+  const display = document.getElementById('taskDisplay');
+  if (data.tasks.length === 0) {
+    display.innerHTML = '<div class="empty">まだタスクがありません。上から最初のタスクを追加しましょう！</div>';
+  } else {
+    const grouped = {};
+    data.tasks.forEach(t => {
+      if (!grouped[t.project]) grouped[t.project] = [];
+      grouped[t.project].push(t);
+    });
+
+    let html = '';
+    Object.entries(grouped).forEach(([project, tasks]) => {
+      const color = getProjectColor(project);
+      const projectTotal = tasks.reduce((s, t) => s + t.time, 0);
+
+      html += `<div class="project-group">`;
+      if (isToday()) {
+        html += `<div class="project-header" style="background:${color}" onclick="openColorPicker('${escapeHtml(project)}')" title="クリックして色を変更">`;
+      } else {
+        html += `<div class="project-header" style="background:${color};cursor:default;">`;
+      }
+      html += `<span>${project}</span>`;
+      html += `<span class="project-time">${formatTime(projectTotal)} / ${tasks.length}件</span>`;
+      html += `</div>`;
+      html += `<div class="task-list">`;
+      tasks.forEach(t => {
+        html += `<div class="task-item">`;
+        if (isToday()) {
+          html += `<span class="task-name editable" onclick="editTaskName(${t.id})" title="クリックして編集">${escapeHtml(t.name)}</span>`;
+          html += `<span class="task-time editable" onclick="editTaskTime(${t.id})" title="クリックして編集">${formatTime(t.time)}</span>`;
+          html += `<button class="btn-delete" onclick="deleteTask(${t.id})">×</button>`;
+        } else {
+          html += `<span class="task-name">${escapeHtml(t.name)}</span>`;
+          html += `<span class="task-time">${formatTime(t.time)}</span>`;
+        }
+        html += `</div>`;
+      });
+      html += `</div></div>`;
+    });
+    display.innerHTML = html;
+  }
+
+  // Update timer project list if idle and viewing today
+  if (timerState === 'idle' && isToday()) renderTimer();
+
+  // Donut Chart
+  const timelineSection = document.getElementById('timelineSection');
+  if (data.tasks.length > 0) {
+    timelineSection.style.display = 'block';
+    const chart = document.getElementById('donutChart');
+    const projectTimes = {};
+    data.tasks.forEach(t => {
+      projectTimes[t.project] = (projectTimes[t.project] || 0) + t.time;
+    });
+
+    const size = 180;
+    const stroke = 32;
+    const radius = (size - stroke) / 2;
+    const circumference = 2 * Math.PI * radius;
+    let offset = 0;
+
+    let arcs = '';
+    const entries = Object.entries(projectTimes);
+    entries.forEach(([project, time]) => {
+      const color = getProjectColor(project);
+      const pct = time / totalMinutes;
+      const dashLen = circumference * pct;
+      const dashGap = circumference - dashLen;
+      arcs += `<circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="${color}" stroke-width="${stroke}" stroke-dasharray="${dashLen} ${dashGap}" stroke-dashoffset="${-offset}" stroke-linecap="round" style="transition:all 0.4s ease"/>`;
+      offset += dashLen;
+    });
+
+    let legendHtml = '';
+    entries.forEach(([project, time]) => {
+      const color = getProjectColor(project);
+      const pct = Math.round(time / totalMinutes * 100);
+      legendHtml += `<div class="donut-legend-item">`;
+      legendHtml += `<div class="donut-legend-dot" style="background:${color}"></div>`;
+      legendHtml += `<div class="donut-legend-info">`;
+      legendHtml += `<span class="donut-legend-name">${project}</span>`;
+      legendHtml += `<span class="donut-legend-detail">${formatTime(time)}（${pct}%）</span>`;
+      legendHtml += `</div></div>`;
+    });
+
+    chart.innerHTML = `
+      <div class="donut-chart" style="width:${size}px;height:${size}px;">
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="transform:rotate(-90deg)">
+          <circle cx="${size/2}" cy="${size/2}" r="${radius}" fill="none" stroke="#f0f0f5" stroke-width="${stroke}"/>
+          ${arcs}
+        </svg>
+        <div class="donut-center">
+          <div class="donut-total-label">合計</div>
+          <div class="donut-total-value">${formatTime(totalMinutes)}</div>
+        </div>
+      </div>
+      <div class="donut-legend">${legendHtml}</div>`;
+  } else {
+    timelineSection.style.display = 'none';
+  }
+
+  // Advice
+  const adviceSection = document.getElementById('adviceSection');
+  const advices = generateAdvice();
+  if (advices.length > 0) {
+    adviceSection.style.display = 'block';
+    document.getElementById('adviceList').innerHTML = advices.map(a =>
+      `<div class="advice-card ${a.type}"><span class="advice-icon">${a.icon}</span><span>${a.text}</span></div>`
+    ).join('');
+  } else {
+    adviceSection.style.display = data.tasks.length > 0 ? 'block' : 'none';
+    document.getElementById('adviceList').innerHTML = '<div class="advice-card good"><span class="advice-icon">👍</span><span>タスクを追加するとアドバイスが表示されます！</span></div>';
+  }
+
+  // Weekly report
+  renderWeeklyReport();
+
+  // AI Summary
+  renderAiSummary();
+}
+
+function renderGoalBar(type, currentMinutes) {
+  const barContainer = document.getElementById(type + 'GoalBar');
+  const label = document.getElementById(type + 'GoalLabel');
+  const fill = document.getElementById(type + 'GoalFill');
+  const goal = goals[type];
+
+  if (!goal || goal <= 0) {
+    barContainer.style.display = 'none';
+    return;
+  }
+
+  barContainer.style.display = 'block';
+  const pct = Math.min(100, Math.round(currentMinutes / goal * 100));
+  label.textContent = `目標: ${formatTime(goal)}（${pct}%）`;
+  fill.style.width = pct + '%';
+}
+
+function editTaskName(id) {
+  if (!isToday()) return;
+  const task = data.tasks.find(t => t.id === id);
+  if (!task) return;
+  const span = event.target;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = task.name;
+  input.className = 'edit-input';
+  input.style.flex = '1';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const save = () => {
+    const val = input.value.trim();
+    if (val) task.name = val;
+    saveData();
+    render();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.isComposing) save();
+    if (e.key === 'Escape') render();
+  });
+}
+
+function editTaskTime(id) {
+  if (!isToday()) return;
+  const task = data.tasks.find(t => t.id === id);
+  if (!task) return;
+  const span = event.target;
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.value = task.time;
+  input.min = '1';
+  input.className = 'edit-input time';
+  span.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const save = () => {
+    const val = parseInt(input.value);
+    if (val && val > 0) task.time = val;
+    saveData();
+    render();
+  };
+  input.addEventListener('blur', save);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') save();
+    if (e.key === 'Escape') render();
+  });
+}
+
+const PALETTE = [
+  '#c4b8e0','#b8d4c4','#d4b8c4','#b8c8d4','#d4ccb8',
+  '#b8d4d4','#d4b8b8','#c4d4b8','#a89cc8','#8bb5a0',
+  '#c89cac','#8ba8c8','#c8b88b','#8bc8c8','#c88b8b',
+  '#a0c88b','#e6c9a8','#a8c9e6','#e6a8c9','#c9e6a8'
+];
+
+let currentEditProject = '';
+
+function openColorPicker(project) {
+  if (!isToday()) return;
+  if (!data.projectColors) data.projectColors = {};
+  currentEditProject = project;
+  const current = getProjectColor(project);
+
+  let html = '<div class="color-overlay" onclick="if(event.target===this)closeColorPicker()">';
+  html += '<div class="color-modal">';
+  html += `<div class="color-modal-title">${escapeHtml(project)} の設定</div>`;
+  html += '<div class="project-name-edit">';
+  html += '<label>プロジェクト名</label>';
+  html += `<div class="project-name-row"><input type="text" id="editProjectName" value="${escapeHtml(project)}" class="edit-input" style="flex:1;"><button class="btn-add" onclick="renameProject()">変更</button></div>`;
+  html += '</div>';
+  html += '<div class="color-grid">';
+  PALETTE.forEach(c => {
+    const sel = c === current ? ' selected' : '';
+    html += `<div class="color-swatch${sel}" style="background:${c}" onclick="selectColor('${currentEditProject}','${c}')"></div>`;
+  });
+  html += '</div>';
+  html += '<div class="color-custom">';
+  html += `<input type="color" id="customColor" value="${current}" onchange="selectColor(currentEditProject,this.value)">`;
+  html += '<span>カスタムカラー</span>';
+  html += '</div>';
+  html += '<div class="color-modal-buttons">';
+  html += '<button class="btn-cancel" onclick="closeColorPicker()">閉じる</button>';
+  html += '</div></div></div>';
+
+  document.getElementById('colorPickerContainer').innerHTML = html;
+}
+
+function renameProject() {
+  const input = document.getElementById('editProjectName');
+  const newName = input.value.trim();
+  if (!newName) return;
+  if (newName === currentEditProject) return;
+  if (data.projects.includes(newName)) {
+    alert('このプロジェクト名は既に存在します。');
+    return;
+  }
+  const idx = data.projects.indexOf(currentEditProject);
+  if (idx !== -1) data.projects[idx] = newName;
+  data.tasks.forEach(t => {
+    if (t.project === currentEditProject) t.project = newName;
+  });
+  if (data.projectColors && data.projectColors[currentEditProject]) {
+    data.projectColors[newName] = data.projectColors[currentEditProject];
+    delete data.projectColors[currentEditProject];
+  }
+  currentEditProject = newName;
+  saveData();
+  closeColorPicker();
+  render();
+}
+
+function selectColor(project, color) {
+  if (!data.projectColors) data.projectColors = {};
+  data.projectColors[project] = color;
+  saveData();
+  closeColorPicker();
+  render();
+}
+
+function closeColorPicker() {
+  document.getElementById('colorPickerContainer').innerHTML = '';
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Enter key support
+document.getElementById('newProject').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addProject(); });
+document.getElementById('taskName').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addTask(); });
+document.getElementById('taskHours').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addTask(); });
+document.getElementById('taskMinutes').addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) addTask(); });
+
+render();
+renderTimer();
+</script>
+
+</body>
+</html>
