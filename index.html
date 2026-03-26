@@ -132,6 +132,119 @@ h1 {
   color: #666;
 }
 
+.btn-mypage {
+  padding: 5px 14px;
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-mypage:hover {
+  background: #b07070;
+}
+
+/* My Page Modal */
+.mypage-overlay {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 2000;
+  justify-content: center;
+  align-items: center;
+}
+
+.mypage-overlay.active {
+  display: flex;
+}
+
+.mypage-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  width: 400px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.mypage-modal h2 {
+  font-size: 1.1rem;
+  color: #7c6f9c;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.mypage-field {
+  margin-bottom: 16px;
+}
+
+.mypage-field label {
+  display: block;
+  font-size: 0.8rem;
+  color: #999;
+  margin-bottom: 6px;
+}
+
+.mypage-field input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1.5px solid #c0c0c8;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  color: #4a4a4a;
+  outline: none;
+}
+
+.mypage-field input:focus {
+  border-color: #c48888;
+}
+
+.mypage-info {
+  font-size: 0.8rem;
+  color: #bbb;
+  margin-bottom: 6px;
+}
+
+.mypage-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.mypage-btn-save {
+  padding: 8px 24px;
+  background: #c48888;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.mypage-btn-save:hover {
+  background: #b07070;
+}
+
+.mypage-btn-cancel {
+  padding: 8px 24px;
+  background: #eee;
+  color: #888;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.mypage-btn-cancel:hover {
+  background: #ddd;
+}
+
 /* Sync indicator */
 .sync-indicator {
   font-size: 0.7rem;
@@ -1110,10 +1223,11 @@ input:focus, select:focus {
   <div class="logout-bar">
     <span class="sync-indicator" id="syncIndicator"></span>
     <span class="user-email" id="userEmail"></span>
+    <button class="btn-mypage" onclick="openMyPage()">マイページ</button>
     <button class="btn-logout" onclick="logout()">ログアウト</button>
   </div>
 
-  <h1>Daily Task Tracker</h1>
+  <h1 id="appTitle">の成長記録</h1>
   <div class="date-display" id="dateDisplay"></div>
 
   <div class="date-nav">
@@ -1215,6 +1329,21 @@ input:focus, select:focus {
 </div>
 <div id="colorPickerContainer"></div>
 <div id="goalModalContainer"></div>
+
+<div class="mypage-overlay" id="mypageOverlay">
+  <div class="mypage-modal">
+    <h2>マイページ</h2>
+    <div class="mypage-field">
+      <label>表示名</label>
+      <input type="text" id="mypageDisplayName" placeholder="名前を入力...">
+    </div>
+    <div class="mypage-info" id="mypageEmail"></div>
+    <div class="mypage-buttons">
+      <button class="mypage-btn-cancel" onclick="closeMyPage()">キャンセル</button>
+      <button class="mypage-btn-save" onclick="saveMyPage()">保存</button>
+    </div>
+  </div>
+</div>
 
 <!-- Firebase SDK (CDN) -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
@@ -1381,6 +1510,61 @@ async function loadGoalsFromFirestore() {
   }
 }
 
+async function saveProfileToFirestore(profile) {
+  if (!currentUser) return;
+  try {
+    await db.collection('users').doc(currentUser.uid)
+      .collection('settings').doc('profile')
+      .set(profile);
+  } catch (err) {
+    console.error('Firestore profile save error:', err);
+  }
+}
+
+async function loadProfileFromFirestore() {
+  if (!currentUser) return null;
+  try {
+    const doc = await db.collection('users').doc(currentUser.uid)
+      .collection('settings').doc('profile').get();
+    if (doc.exists) return doc.data();
+    return null;
+  } catch (err) {
+    console.error('Firestore profile load error:', err);
+    return null;
+  }
+}
+
+function updateTitle() {
+  const name = userProfile.displayName || '';
+  document.getElementById('appTitle').textContent = name ? name + 'の成長記録' : 'の成長記録';
+  document.title = name ? name + 'の成長記録' : 'Daily Task Tracker';
+}
+
+function openMyPage() {
+  document.getElementById('mypageDisplayName').value = userProfile.displayName || '';
+  document.getElementById('mypageEmail').textContent = currentUser ? currentUser.email : '';
+  document.getElementById('mypageOverlay').classList.add('active');
+}
+
+function closeMyPage() {
+  document.getElementById('mypageOverlay').classList.remove('active');
+}
+
+// Close mypage on overlay click
+document.addEventListener('click', e => {
+  const overlay = document.getElementById('mypageOverlay');
+  if (e.target === overlay) closeMyPage();
+});
+
+async function saveMyPage() {
+  const name = document.getElementById('mypageDisplayName').value.trim();
+  userProfile.displayName = name;
+  localStorage.setItem('daily-task-tracker-profile', JSON.stringify(userProfile));
+  await saveProfileToFirestore(userProfile);
+  updateTitle();
+  closeMyPage();
+}
+
 async function saveProjectColorsToFirestore(colors) {
   if (!currentUser) return;
   try {
@@ -1417,6 +1601,7 @@ let viewingDate = todayKey();
 let allData = { days: {} };
 let data = { projects: [], tasks: [], projectColors: {} };
 let goals = { study: 0, dev: 0 };
+let userProfile = { displayName: '' };
 
 // Timer state
 let timerState = 'idle';
@@ -1457,6 +1642,18 @@ async function initApp() {
   } else if (goals.study || goals.dev) {
     await saveGoalsToFirestore(goals);
   }
+
+  // Load profile
+  const localProfile = localStorage.getItem('daily-task-tracker-profile');
+  if (localProfile) userProfile = JSON.parse(localProfile);
+  const firestoreProfile = await loadProfileFromFirestore();
+  if (firestoreProfile) {
+    userProfile = firestoreProfile;
+    localStorage.setItem('daily-task-tracker-profile', JSON.stringify(userProfile));
+  } else if (userProfile.displayName) {
+    await saveProfileToFirestore(userProfile);
+  }
+  updateTitle();
 
   data = getDayData(viewingDate);
   render();
