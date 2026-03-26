@@ -2074,12 +2074,13 @@ function togglePasswordVisibility(inputId, btn) {
 function googleLogin() {
   const provider = new firebase.auth.GoogleAuthProvider();
   auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => {
-    // Mobile browsers and standalone mode: use redirect (popups are often blocked)
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
-    if (isMobile || isStandalone) {
-      return auth.signInWithRedirect(provider);
+    if (isStandalone) {
+      // Standalone mode: Google login not supported, prompt to use email
+      alert(currentLang === 'ja' ? 'ホーム画面アプリではGoogleログインが使えません。メール/パスワードでログインしてください。' : 'Google login is not available in home screen app. Please use email/password.');
+      return;
     }
+    // All browsers (PC & mobile): use popup
     return auth.signInWithPopup(provider);
   }).catch(err => {
     console.error('Login error:', err);
