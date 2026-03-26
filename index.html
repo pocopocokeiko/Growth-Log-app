@@ -109,6 +109,8 @@ h1 {
   align-items: center;
   gap: 10px;
   margin-bottom: 8px;
+  flex-wrap: nowrap;
+  white-space: nowrap;
 }
 
 .user-email {
@@ -261,8 +263,8 @@ h1 {
   color: #e07070;
 }
 
-.lang-select {
-  padding: 3px 8px;
+.lang-toggle {
+  padding: 3px 10px;
   background: #f5f5f5;
   color: #888;
   border: 1px solid #e0e0e0;
@@ -270,16 +272,13 @@ h1 {
   font-size: 0.7rem;
   cursor: pointer;
   outline: none;
-  transition: border-color 0.2s;
-  appearance: auto;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.lang-select:hover {
+.lang-toggle:hover {
+  background: #eee;
   border-color: #ccc;
-}
-
-.lang-select:focus {
-  border-color: #c48888;
 }
 
 /* Date Navigation */
@@ -1229,10 +1228,7 @@ input:focus, select:focus {
 
 <!-- Login Screen -->
 <div id="loginScreen" class="login-screen" style="display:none;">
-  <select class="lang-select" id="langSelectLogin" onchange="changeLanguage(this.value)" style="position:absolute;top:20px;right:20px;">
-    <option value="ja">日本語</option>
-    <option value="en">English</option>
-  </select>
+  <button class="lang-toggle" id="langToggleLogin" onclick="toggleLanguage()" style="position:absolute;top:20px;right:20px;">EN</button>
   <h1>Daily Task Tracker</h1>
   <div class="login-subtitle">1日のタスクと時間を記録・振り返り</div>
   <button class="btn-google-login" onclick="googleLogin()">
@@ -1246,10 +1242,7 @@ input:focus, select:focus {
 <div id="appContent" class="container" style="display:none;">
 
   <div class="logout-bar">
-    <select class="lang-select" id="langSelect" onchange="changeLanguage(this.value)">
-      <option value="ja">日本語</option>
-      <option value="en">English</option>
-    </select>
+    <button class="lang-toggle" id="langToggle" onclick="toggleLanguage()">EN</button>
     <span class="sync-indicator" id="syncIndicator"></span>
     <span class="user-email" id="userEmail"></span>
     <button class="btn-mypage" onclick="openMyPage()">マイページ</button>
@@ -1739,6 +1732,18 @@ function t(key) {
   return TRANSLATIONS[currentLang][key] || TRANSLATIONS['ja'][key] || key;
 }
 
+function toggleLanguage() {
+  changeLanguage(currentLang === 'ja' ? 'en' : 'ja');
+}
+
+function updateLangToggleButtons() {
+  const label = currentLang === 'ja' ? 'EN' : 'JA';
+  const btn1 = document.getElementById('langToggle');
+  const btn2 = document.getElementById('langToggleLogin');
+  if (btn1) btn1.textContent = label;
+  if (btn2) btn2.textContent = label;
+}
+
 function changeLanguage(lang) {
   currentLang = lang;
   localStorage.setItem('daily-task-tracker-lang', lang);
@@ -1748,6 +1753,7 @@ function changeLanguage(lang) {
     const profileData = { ...userProfile, lang: lang };
     saveProfileToFirestore(profileData);
   }
+  updateLangToggleButtons();
   // Update all static text
   updateStaticText();
   // Re-render dynamic content
@@ -1837,11 +1843,7 @@ function updateStaticText() {
   const mypageSaveBtn = document.querySelector('.mypage-btn-save');
   if (mypageSaveBtn) mypageSaveBtn.textContent = t('btnSave');
 
-  // Lang selects (both login and app)
-  const langSelect = document.getElementById('langSelect');
-  if (langSelect) langSelect.value = currentLang;
-  const langSelectLogin = document.getElementById('langSelectLogin');
-  if (langSelectLogin) langSelectLogin.value = currentLang;
+  updateLangToggleButtons();
 }
 
 // ============================================================
@@ -2128,9 +2130,7 @@ async function initApp() {
   } else if (userProfile.displayName) {
     await saveProfileToFirestore(userProfile);
   }
-  // Set the language selector
-  const langSelect = document.getElementById('langSelect');
-  if (langSelect) langSelect.value = currentLang;
+  updateLangToggleButtons();
   document.documentElement.lang = currentLang === 'ja' ? 'ja' : 'en';
   updateStaticText();
   updateTitle();
@@ -3107,11 +3107,7 @@ keyListenerObserver.observe(document.getElementById('appContent'), { attributes:
 document.getElementById('loginScreen').style.display = 'flex';
 
 // Set initial language
-const langSelects = ['langSelect', 'langSelectLogin'];
-langSelects.forEach(id => {
-  const el = document.getElementById(id);
-  if (el) el.value = currentLang;
-});
+updateLangToggleButtons();
 document.documentElement.lang = currentLang === 'ja' ? 'ja' : 'en';
 updateStaticText();
 </script>
