@@ -2590,10 +2590,31 @@ function isToday() {
 
 function getDayData(dateKey) {
   if (!allData.days[dateKey]) {
-    allData.days[dateKey] = { projects: [], tasks: [], projectColors: {} };
+    // New day: inherit projects and colors from the most recent day
+    const prevProjects = getPreviousDayProjects(dateKey);
+    allData.days[dateKey] = {
+      projects: prevProjects.projects,
+      tasks: [],
+      projectColors: prevProjects.colors
+    };
   }
   if (!allData.days[dateKey].projectColors) allData.days[dateKey].projectColors = {};
   return allData.days[dateKey];
+}
+
+function getPreviousDayProjects(dateKey) {
+  const sortedDays = Object.keys(allData.days)
+    .filter(d => d < dateKey && allData.days[d].projects && allData.days[d].projects.length > 0)
+    .sort()
+    .reverse();
+  if (sortedDays.length > 0) {
+    const prev = allData.days[sortedDays[0]];
+    return {
+      projects: [...prev.projects],
+      colors: prev.projectColors ? { ...prev.projectColors } : {}
+    };
+  }
+  return { projects: [], colors: {} };
 }
 
 function saveData() {
