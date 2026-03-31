@@ -3302,6 +3302,33 @@ function renderWeeklyReport() {
   html += '</div>';
   html += '</div>';
 
+  // Project breakdown for the week
+  const projectWeekTotals = {};
+  days.forEach(d => {
+    const dayData = allData.days[d];
+    if (!dayData || !dayData.tasks) return;
+    dayData.tasks.forEach(task => {
+      projectWeekTotals[task.project] = (projectWeekTotals[task.project] || 0) + task.time;
+    });
+  });
+
+  const sortedProjects = Object.entries(projectWeekTotals).sort((a, b) => b[1] - a[1]);
+  if (sortedProjects.length > 0) {
+    const maxProjectMin = sortedProjects[0][1];
+    html += `<div style="margin-top:16px;padding-top:14px;border-top:1px solid #ececf5;">`;
+    html += `<div style="font-size:0.8rem;color:#999;margin-bottom:10px;">${currentLang === 'ja' ? 'プロジェクト別' : 'By Project'}</div>`;
+    sortedProjects.forEach(([project, minutes]) => {
+      const pct = maxProjectMin > 0 ? (minutes / maxProjectMin * 100) : 0;
+      const color = getProjectColor(project);
+      html += `<div class="weekly-bar-row">`;
+      html += `<span class="weekly-bar-label" style="font-size:0.75rem;">${escapeHtml(project)}</span>`;
+      html += `<div class="weekly-bar-bg"><div class="weekly-bar-fill" style="width:${pct}%;background:${color};"></div></div>`;
+      html += `<span class="weekly-bar-value">${formatTime(minutes)}</span>`;
+      html += `</div>`;
+    });
+    html += `</div>`;
+  }
+
   container.innerHTML = html;
 }
 
