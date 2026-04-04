@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Growth Log">
 <meta name="theme-color" content="#ffffff">
-<title>Daily Task Tracker</title>
+<title>Growth Log</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -1492,7 +1492,7 @@ input:focus, select:focus {
 <!-- Login Screen -->
 <div id="loginScreen" class="login-screen" style="display:none;">
   <button class="lang-toggle" id="langToggleLogin" onclick="toggleLanguage()" style="position:absolute;top:20px;right:20px;">EN</button>
-  <h1>Daily Task Tracker</h1>
+  <h1>Growth Log</h1>
   <div class="login-subtitle">1日のタスクと時間を記録・振り返り</div>
   <div id="googleLoginSection">
     <button class="btn-google-login" onclick="googleLogin()">
@@ -1710,7 +1710,7 @@ let currentLang = localStorage.getItem('daily-task-tracker-lang') || 'ja';
 const TRANSLATIONS = {
   ja: {
     // Login screen
-    loginTitle: 'Daily Task Tracker',
+    loginTitle: 'Growth Log',
     loginSubtitle: '1日のタスクと時間を記録・振り返り',
     loginButton: 'Google でログイン',
     loginDivider: 'または',
@@ -1740,7 +1740,7 @@ const TRANSLATIONS = {
 
     // Title
     titleSuffix: 'の成長記録',
-    titleDefault: 'Daily Task Tracker',
+    titleDefault: 'Growth Log',
 
     // Date nav
     today: '今日',
@@ -1884,7 +1884,7 @@ const TRANSLATIONS = {
   },
   en: {
     // Login screen
-    loginTitle: 'Daily Task Tracker',
+    loginTitle: 'Growth Log',
     loginSubtitle: 'Track and review your daily tasks and time',
     loginButton: 'Sign in with Google',
     loginDivider: 'or',
@@ -1914,7 +1914,7 @@ const TRANSLATIONS = {
 
     // Title
     titleSuffix: "'s Growth Log",
-    titleDefault: 'Daily Task Tracker',
+    titleDefault: 'Growth Log',
 
     // Date nav
     today: 'Today',
