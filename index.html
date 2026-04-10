@@ -658,6 +658,51 @@ h1 {
   border-color: #8EA9C4;
 }
 
+.daily-memo-container textarea:disabled {
+  background: #f4f8fb;
+  color: #5a5a5a;
+  cursor: default;
+}
+
+.memo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.memo-header h2 {
+  margin-bottom: 0 !important;
+}
+
+.memo-edit-btn {
+  background: none;
+  border: 1px solid #c0c0c8;
+  border-radius: 6px;
+  color: #8EA9C4;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 4px 10px;
+  transition: all 0.2s;
+}
+
+.memo-edit-btn:hover {
+  background: #eef3f8;
+  border-color: #8EA9C4;
+}
+
+.memo-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+.memo-saved-text {
+  font-size: 0.75rem;
+  color: #8EA9C4;
+  margin-top: 6px;
+}
+
 .input-section {
   background: #f4f8fb;
   border-radius: 16px;
@@ -1670,9 +1715,16 @@ input:focus, select:focus {
   </div>
 
   <div class="daily-memo-section">
-    <h2 id="memoTitle">振り返りメモ</h2>
+    <div class="memo-header">
+      <h2 id="memoTitle">振り返りメモ</h2>
+      <button class="memo-edit-btn" id="memoEditBtn" onclick="enableMemoEdit()" title="編集" style="display:none;">✎</button>
+    </div>
     <div class="daily-memo-container">
-      <textarea id="dailyMemo" placeholder="今日の振り返りを書いてみよう..." oninput="saveMemo()"></textarea>
+      <textarea id="dailyMemo" placeholder="今日の振り返りを書いてみよう..."></textarea>
+      <div id="memoSaved" class="memo-saved-text" style="display:none;"></div>
+    </div>
+    <div class="memo-footer">
+      <button class="btn-goal" id="memoSaveBtn" onclick="saveMemoAndLock()">保存する</button>
     </div>
   </div>
 
@@ -2210,6 +2262,8 @@ function updateStaticText() {
   if (memoTitle) memoTitle.textContent = currentLang === 'ja' ? '振り返りメモ' : 'Daily Reflection';
   const memoTextarea = document.getElementById('dailyMemo');
   if (memoTextarea) memoTextarea.placeholder = currentLang === 'ja' ? '今日の振り返りを書いてみよう...' : 'Write your daily reflection...';
+  const memoSaveBtn = document.getElementById('memoSaveBtn');
+  if (memoSaveBtn) memoSaveBtn.textContent = currentLang === 'ja' ? '保存する' : 'Save';
 
   // Summary hints
   const devHint = document.getElementById('devHint');
@@ -2855,15 +2909,40 @@ function saveData() {
   saveDayToFirestore(viewingDate, data);
 }
 
-function saveMemo() {
+function saveMemoAndLock() {
   const memo = document.getElementById('dailyMemo').value;
   data.memo = memo;
   saveData();
+  // Lock textarea
+  document.getElementById('dailyMemo').disabled = true;
+  document.getElementById('memoSaveBtn').style.display = 'none';
+  document.getElementById('memoEditBtn').style.display = 'inline-block';
+  const savedText = document.getElementById('memoSaved');
+  savedText.textContent = currentLang === 'ja' ? '保存しました' : 'Saved';
+  savedText.style.display = 'block';
+  setTimeout(() => { savedText.style.display = 'none'; }, 2000);
+}
+
+function enableMemoEdit() {
+  document.getElementById('dailyMemo').disabled = false;
+  document.getElementById('dailyMemo').focus();
+  document.getElementById('memoSaveBtn').style.display = 'inline-block';
+  document.getElementById('memoEditBtn').style.display = 'none';
 }
 
 function loadMemo() {
   const memoEl = document.getElementById('dailyMemo');
-  if (memoEl) memoEl.value = data.memo || '';
+  if (!memoEl) return;
+  memoEl.value = data.memo || '';
+  if (data.memo) {
+    memoEl.disabled = true;
+    document.getElementById('memoSaveBtn').style.display = 'none';
+    document.getElementById('memoEditBtn').style.display = 'inline-block';
+  } else {
+    memoEl.disabled = false;
+    document.getElementById('memoSaveBtn').style.display = 'inline-block';
+    document.getElementById('memoEditBtn').style.display = 'none';
+  }
 }
 
 function saveGoals() {
