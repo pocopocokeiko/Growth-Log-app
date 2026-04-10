@@ -774,7 +774,7 @@ input:focus, select:focus {
   align-items: end;
 }
 
-.project-manager .field { flex: 1; }
+.project-manager .field { flex: 0 0 50%; }
 
 .btn-project {
   padding: 10px 14px;
@@ -1678,13 +1678,13 @@ input:focus, select:focus {
   <div id="inputArea">
   <div class="input-row">
     <div class="input-section">
-      <h2>手動でタスクを追加</h2>
+      <h2>プロジェクトの作成と記録</h2>
     <div class="project-manager">
       <div class="field">
         <label>新しいプロジェクト</label>
         <input type="text" id="newProject" placeholder="プロジェクト名...">
       </div>
-      <button class="btn-project" onclick="addProject()">+ 追加</button>
+      <button class="btn-project" onclick="addProject()">+ プロジェクトを作成</button>
     </div>
     <div class="form-row">
       <div>
@@ -1703,7 +1703,7 @@ input:focus, select:focus {
         <label>分</label>
         <input type="text" id="taskMinutes" value="30" inputmode="numeric" style="text-align:center;">
       </div>
-      <button class="btn-add" onclick="addTask()">+ 追加</button>
+      <button class="btn-add" onclick="addTask()">+ 記録</button>
     </div>
   </div>
 
@@ -1879,7 +1879,7 @@ const TRANSLATIONS = {
     goalOf: '目標:',
 
     // Section headers
-    sectionAddTask: '手動でタスクを追加',
+    sectionAddTask: 'プロジェクトの作成と記録',
     sectionTimer: 'タイマーで記録',
     sectionTimeline: '時間配分',
     sectionAdvice: 'アドバイス',
@@ -1898,7 +1898,8 @@ const TRANSLATIONS = {
     labelDisplayName: '表示名',
 
     // Buttons
-    btnAdd: '+ 追加',
+    btnAdd: '+ 記録',
+    btnAddProject: '+ プロジェクトを作成',
     btnStart: '作業開始',
     btnStop: 'ストップ',
     btnSave: '保存',
@@ -2053,7 +2054,7 @@ const TRANSLATIONS = {
     goalOf: 'Goal:',
 
     // Section headers
-    sectionAddTask: 'Add Task Manually',
+    sectionAddTask: 'Create Project & Record',
     sectionTimer: 'Record with Timer',
     sectionTimeline: 'Time Breakdown',
     sectionAdvice: 'Advice',
@@ -2072,7 +2073,8 @@ const TRANSLATIONS = {
     labelDisplayName: 'Display name',
 
     // Buttons
-    btnAdd: '+ Add',
+    btnAdd: '+ Record',
+    btnAddProject: '+ Create Project',
     btnStart: 'Start',
     btnStop: 'Stop',
     btnSave: 'Save',
@@ -2283,7 +2285,7 @@ function updateStaticText() {
   const newProjectInput = document.getElementById('newProject');
   if (newProjectInput) newProjectInput.placeholder = t('placeholderProject');
   const projectBtn = document.querySelector('.btn-project');
-  if (projectBtn) projectBtn.textContent = t('btnAdd');
+  if (projectBtn) projectBtn.textContent = t('btnAddProject');
 
   const formLabels = document.querySelectorAll('.form-row label');
   if (formLabels.length >= 4) {
