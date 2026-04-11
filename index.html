@@ -3284,6 +3284,140 @@ function generateAdvice() {
     });
   }
 
+  // Historical data analysis
+  const historicalAdvices = generateHistoricalAdvice();
+  advices.push(...historicalAdvices);
+
+  return advices;
+}
+
+function generateHistoricalAdvice() {
+  const advices = [];
+  const today = viewingDate;
+  const tr = TRANSLATIONS[currentLang];
+
+  // Get past 7 days data
+  const pastDays = [];
+  for (let i = 1; i <= 7; i++) {
+    const d = addDays(today, -i);
+    if (allData.days[d]) pastDays.push({ key: d, data: allData.days[d] });
+  }
+  if (pastDays.length === 0) return advices;
+
+  const todayTotal = data.tasks.reduce((s, t) => s + t.time, 0);
+  const todayStudy = data.tasks.filter(t => t.project.includes('勉強')).reduce((s, t) => s + t.time, 0);
+  const todayDev = data.tasks.filter(t => t.project.includes('開発')).reduce((s, t) => s + t.time, 0);
+
+  // Yesterday comparison
+  const yesterday = addDays(today, -1);
+  if (allData.days[yesterday] && allData.days[yesterday].tasks) {
+    const yesterdayTotal = allData.days[yesterday].tasks.reduce((s, t) => s + t.time, 0);
+    if (todayTotal > 0 && yesterdayTotal > 0) {
+      const diff = todayTotal - yesterdayTotal;
+      if (diff > 60) {
+        advices.push({
+          type: 'info', icon: '📈',
+          text: currentLang === 'ja'
+            ? `昨日より${formatTime(diff)}多く作業しています。ペース上がってるね！`
+            : `You worked ${formatTime(diff)} more than yesterday. Great pace!`
+        });
+      } else if (diff < -60) {
+        advices.push({
+          type: 'info', icon: '📉',
+          text: currentLang === 'ja'
+            ? `昨日より${formatTime(Math.abs(diff))}少なめ。ゆっくりする日も大事！`
+            : `${formatTime(Math.abs(diff))} less than yesterday. Rest days matter too!`
+        });
+      }
+    }
+  }
+
+  // Study streak
+  let studyStreak = todayStudy > 0 ? 1 : 0;
+  if (studyStreak > 0) {
+    for (let i = 1; i <= 7; i++) {
+      const d = addDays(today, -i);
+      const dd = allData.days[d];
+      if (dd && dd.tasks && dd.tasks.filter(t => t.project.includes('勉強')).reduce((s, t) => s + t.time, 0) > 0) {
+        studyStreak++;
+      } else break;
+    }
+    if (studyStreak >= 3) {
+      advices.push({
+        type: 'good', icon: '🔥',
+        text: currentLang === 'ja'
+          ? `勉強${studyStreak}日連続！素晴らしい継続力！`
+          : `${studyStreak} day study streak! Amazing consistency!`
+      });
+    }
+  }
+
+  // Dev streak
+  let devStreak = todayDev > 0 ? 1 : 0;
+  if (devStreak > 0) {
+    for (let i = 1; i <= 7; i++) {
+      const d = addDays(today, -i);
+      const dd = allData.days[d];
+      if (dd && dd.tasks && dd.tasks.filter(t => t.project.includes('開発')).reduce((s, t) => s + t.time, 0) > 0) {
+        devStreak++;
+      } else break;
+    }
+    if (devStreak >= 3) {
+      advices.push({
+        type: 'good', icon: '💻',
+        text: currentLang === 'ja'
+          ? `個人開発${devStreak}日連続！プロダクトが着実に育っているね！`
+          : `${devStreak} day dev streak! Your product is growing steadily!`
+      });
+    }
+  }
+
+  // Task per project comparison with last week average
+  const projectTimes = {};
+  data.tasks.forEach(t => { projectTimes[t.project] = (projectTimes[t.project] || 0) + t.time; });
+
+  Object.entries(projectTimes).forEach(([project, todayTime]) => {
+    const pastTimes = [];
+    pastDays.forEach(pd => {
+      if (pd.data.tasks) {
+        const pt = pd.data.tasks.filter(t => t.project === project).reduce((s, t) => s + t.time, 0);
+        if (pt > 0) pastTimes.push(pt);
+      }
+    });
+    if (pastTimes.length >= 2) {
+      const avg = Math.round(pastTimes.reduce((s, t) => s + t, 0) / pastTimes.length);
+      if (todayTime < avg * 0.5 && avg > 30) {
+        advices.push({
+          type: 'info', icon: '📊',
+          text: currentLang === 'ja'
+            ? `${project}は今日${formatTime(todayTime)}（平均${formatTime(avg)}）。いつもより少なめかも？`
+            : `${project}: ${formatTime(todayTime)} today (avg ${formatTime(avg)}). Less than usual?`
+        });
+      } else if (todayTime > avg * 1.5 && avg > 30) {
+        advices.push({
+          type: 'info', icon: '📊',
+          text: currentLang === 'ja'
+            ? `${project}は今日${formatTime(todayTime)}（平均${formatTime(avg)}）。集中して取り組めているね！`
+            : `${project}: ${formatTime(todayTime)} today (avg ${formatTime(avg)}). Great focus!`
+        });
+      }
+    }
+  });
+
+  // Weekly trend
+  const weekTotals = pastDays.map(pd => pd.data.tasks ? pd.data.tasks.reduce((s, t) => s + t.time, 0) : 0).filter(t => t > 0);
+  if (weekTotals.length >= 3 && todayTotal > 0) {
+    const weekAvg = Math.round(weekTotals.reduce((s, t) => s + t, 0) / weekTotals.length);
+    if (todayTotal > weekAvg * 1.3) {
+      advices.push({
+        type: 'good', icon: '⭐',
+        text: currentLang === 'ja'
+          ? `今日は週平均（${formatTime(weekAvg)}）を上回っています。充実した1日！`
+          : `Exceeded your weekly average (${formatTime(weekAvg)}). Productive day!`
+      });
+    }
+  }
+
   return advices;
 }
 
