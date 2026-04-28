@@ -1630,6 +1630,25 @@ input:focus, select:focus {
   <div class="login-note">Googleアカウントまたはメールアドレスでログインすると、データがクラウドに保存され、複数デバイスで同期できます。</div>
 </div>
 
+<!-- Unlock Screen (shown when logged in but encryption key is missing) -->
+<div id="unlockScreen" class="login-screen" style="display:none;">
+  <h1 id="unlockTitle">ロック解除</h1>
+  <div class="login-subtitle" id="unlockSubtitle">パスワードを入力してデータを復号してください</div>
+  <div class="email-login-form" style="margin-top:24px;">
+    <div class="password-wrapper">
+      <input type="password" id="unlockPassword" placeholder="パスワード" autocomplete="current-password">
+      <button type="button" class="password-toggle" onclick="togglePasswordVisibility('unlockPassword', this)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <div class="email-login-error" id="unlockError"></div>
+    <div class="email-login-buttons">
+      <button class="btn-email-login" onclick="unlockData()" id="unlockBtn">ロック解除</button>
+    </div>
+    <button onclick="logout()" style="background:none;border:none;color:#999;font-size:0.8rem;cursor:pointer;margin-top:12px;">ログアウト</button>
+  </div>
+</div>
+
 <!-- App Content (hidden until logged in) -->
 <div id="appContent" class="container" style="display:none;">
 
@@ -2349,6 +2368,11 @@ function resetPassword() {
     showEmailError(currentLang === 'ja' ? 'メールアドレスを入力してからクリックしてください' : 'Enter your email first');
     return;
   }
+  // Warning about data loss
+  const warning = currentLang === 'ja'
+    ? '⚠️ 重要: データはあなたのパスワードで暗号化されています。\n\nパスワードをリセットすると、暗号化されたデータは復元不可能になります。\n\n本当にリセットしますか？'
+    : '⚠️ Important: Your data is encrypted with your password.\n\nResetting your password will permanently lose access to encrypted data.\n\nReally reset?';
+  if (!confirm(warning)) return;
   auth.sendPasswordResetEmail(email).then(() => {
     showEmailError(currentLang === 'ja' ? 'パスワードリセットメールを送信しました。メールを確認してください' : 'Password reset email sent. Check your inbox');
   }).catch(err => {
@@ -2421,6 +2445,81 @@ function clearEmailError() {
   if (el) el.textContent = '';
 }
 
+// ============================================================
+// Client-side Encryption (only for email/password users)
+// ============================================================
+
+let encryptionKey = null; // CryptoKey, only in memory
+
+async function deriveEncryptionKey(password, salt) {
+  const enc = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(password),
+    'PBKDF2',
+    false,
+    ['deriveKey']
+  );
+  return crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: enc.encode(salt),
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    keyMaterial,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+}
+
+async function encryptData(plainObject) {
+  if (!encryptionKey) return plainObject; // not encrypted
+  try {
+    const enc = new TextEncoder();
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = enc.encode(JSON.stringify(plainObject));
+    const ciphertext = await crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv: iv },
+      encryptionKey,
+      encoded
+    );
+    return {
+      __encrypted: true,
+      iv: btoa(String.fromCharCode(...iv)),
+      data: btoa(String.fromCharCode(...new Uint8Array(ciphertext)))
+    };
+  } catch (err) {
+    console.error('Encryption error:', err);
+    return plainObject;
+  }
+}
+
+async function decryptData(storedObject) {
+  if (!storedObject || !storedObject.__encrypted) return storedObject; // plain data
+  if (!encryptionKey) return null; // can't decrypt
+  try {
+    const iv = Uint8Array.from(atob(storedObject.iv), c => c.charCodeAt(0));
+    const ciphertext = Uint8Array.from(atob(storedObject.data), c => c.charCodeAt(0));
+    const plaintext = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: iv },
+      encryptionKey,
+      ciphertext
+    );
+    const dec = new TextDecoder();
+    return JSON.parse(dec.decode(plaintext));
+  } catch (err) {
+    console.error('Decryption error:', err);
+    return null;
+  }
+}
+
+async function setupEncryption(email, password) {
+  // Use email as salt so the same password gives different keys per user
+  encryptionKey = await deriveEncryptionKey(password, 'growth-log-' + email);
+}
+
 function emailLogin() {
   clearEmailError();
   const email = document.getElementById('loginEmail').value.trim();
@@ -2429,6 +2528,9 @@ function emailLogin() {
   if (!password) { showEmailError(t('errorEnterPassword')); return; }
 
   auth.signInWithEmailAndPassword(email, password)
+    .then(async () => {
+      await setupEncryption(email, password);
+    })
     .catch(err => {
       console.error('Email login error:', err);
       showEmailError(getEmailAuthErrorMessage(err.code));
@@ -2442,7 +2544,16 @@ function emailRegister() {
   if (!email) { showEmailError(t('errorEnterEmail')); return; }
   if (!password) { showEmailError(t('errorEnterPassword')); return; }
 
+  // Warn about password reset
+  const warning = currentLang === 'ja'
+    ? '⚠️ 重要: データはあなたのパスワードで暗号化され、開発者を含む第三者は閲覧できません。\n\nパスワードを忘れるとデータも復元不可能になります。\n\n登録を続けますか？'
+    : '⚠️ Important: Your data will be encrypted with your password. Even the developer cannot read it.\n\nIf you forget your password, your data will be permanently lost.\n\nContinue registration?';
+  if (!confirm(warning)) return;
+
   auth.createUserWithEmailAndPassword(email, password)
+    .then(async () => {
+      await setupEncryption(email, password);
+    })
     .catch(err => {
       console.error('Email register error:', err);
       showEmailError(getEmailAuthErrorMessage(err.code));
@@ -2450,6 +2561,7 @@ function emailRegister() {
 }
 
 function logout() {
+  encryptionKey = null;
   auth.signOut().catch(err => {
     console.error('Logout error:', err);
   });
@@ -2460,15 +2572,64 @@ auth.getRedirectResult().catch(err => {
   console.error('Redirect result error:', err);
 });
 
-auth.onAuthStateChanged(user => {
+async function showAppForUser(user) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('unlockScreen').style.display = 'none';
+  document.getElementById('appContent').style.display = 'block';
+  document.getElementById('userEmail').textContent = user.email || '';
+  initApp();
+}
+
+function showUnlockScreen() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appContent').style.display = 'none';
+  document.getElementById('unlockScreen').style.display = 'flex';
+  document.getElementById('unlockPassword').value = '';
+  document.getElementById('unlockError').textContent = '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const unlockInput = document.getElementById('unlockPassword');
+  if (unlockInput) {
+    unlockInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.isComposing) unlockData();
+    });
+  }
+});
+
+async function unlockData() {
+  const password = document.getElementById('unlockPassword').value;
+  if (!password) {
+    document.getElementById('unlockError').textContent = currentLang === 'ja' ? 'パスワードを入力してください' : 'Enter your password';
+    return;
+  }
+  try {
+    // Verify password by re-authenticating
+    const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, password);
+    await currentUser.reauthenticateWithCredential(credential);
+    await setupEncryption(currentUser.email, password);
+    showAppForUser(currentUser);
+  } catch (err) {
+    console.error('Unlock error:', err);
+    document.getElementById('unlockError').textContent = currentLang === 'ja' ? 'パスワードが間違っています' : 'Incorrect password';
+  }
+}
+
+auth.onAuthStateChanged(async user => {
   currentUser = user;
   if (user) {
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('appContent').style.display = 'block';
-    document.getElementById('userEmail').textContent = user.email || '';
-    initApp();
+    // Check if email/password user
+    const isEmailUser = user.providerData.some(p => p.providerId === 'password');
+    if (isEmailUser && !encryptionKey) {
+      // Need to unlock
+      showUnlockScreen();
+    } else {
+      showAppForUser(user);
+    }
   } else {
+    encryptionKey = null;
     document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('unlockScreen').style.display = 'none';
     document.getElementById('appContent').style.display = 'none';
     document.getElementById('userEmail').textContent = '';
   }
@@ -2511,9 +2672,10 @@ async function saveDayToFirestore(dateKey, dayData) {
   if (!currentUser) return;
   try {
     setSyncStatus('syncing');
+    const toSave = await encryptData(dayData);
     await db.collection('users').doc(currentUser.uid)
       .collection('days').doc(dateKey)
-      .set(dayData);
+      .set(toSave);
     setSyncStatus('done');
   } catch (err) {
     console.error('Firestore save error:', err);
@@ -2526,7 +2688,10 @@ async function loadDayFromFirestore(dateKey) {
   try {
     const doc = await db.collection('users').doc(currentUser.uid)
       .collection('days').doc(dateKey).get();
-    if (doc.exists) return doc.data();
+    if (doc.exists) {
+      const decrypted = await decryptData(doc.data());
+      return decrypted;
+    }
     return null;
   } catch (err) {
     console.error('Firestore load error:', err);
@@ -2541,9 +2706,10 @@ async function loadAllDaysFromFirestore() {
     const snapshot = await db.collection('users').doc(currentUser.uid)
       .collection('days').get();
     const days = {};
-    snapshot.forEach(doc => {
-      days[doc.id] = doc.data();
-    });
+    for (const doc of snapshot.docs) {
+      const decrypted = await decryptData(doc.data());
+      if (decrypted) days[doc.id] = decrypted;
+    }
     setSyncStatus('done');
     return days;
   } catch (err) {
