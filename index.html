@@ -2863,6 +2863,17 @@ function openSecurityModal() {
   document.getElementById('securityOverlay').classList.add('active');
 }
 
+// Show security modal on first visit
+(function showSecurityModalOnFirstVisit() {
+  const KEY = 'growth-log-security-seen';
+  if (!localStorage.getItem(KEY)) {
+    setTimeout(() => {
+      openSecurityModal();
+      localStorage.setItem(KEY, '1');
+    }, 500);
+  }
+})();
+
 function closeSecurityModal() {
   document.getElementById('securityOverlay').classList.remove('active');
 }
