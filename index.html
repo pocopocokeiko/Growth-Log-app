@@ -285,6 +285,143 @@ h1 {
   color: #6b8aab;
 }
 
+/* Tutorial Tour */
+.tutorial-backdrop {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 2500;
+  pointer-events: auto;
+}
+
+.tutorial-backdrop.active {
+  display: block;
+}
+
+.tutorial-highlight {
+  position: absolute;
+  border-radius: 12px;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 4px #C58D98;
+  z-index: 2510;
+  pointer-events: none;
+  transition: all 0.3s ease;
+  animation: tutorial-pulse 2s ease-in-out infinite;
+}
+
+@keyframes tutorial-pulse {
+  0%, 100% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 4px #C58D98; }
+  50% { box-shadow: 0 0 0 9999px rgba(0,0,0,0.55), 0 0 0 8px rgba(197,141,152,0.5); }
+}
+
+.tutorial-tooltip {
+  position: absolute;
+  background: #fff;
+  border-radius: 14px;
+  padding: 20px 22px;
+  width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  z-index: 2520;
+}
+
+.tutorial-tooltip-arrow {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border: 10px solid transparent;
+}
+
+.tutorial-tooltip-arrow.top {
+  border-bottom-color: #fff;
+  top: -20px;
+  left: 30px;
+}
+
+.tutorial-tooltip-arrow.bottom {
+  border-top-color: #fff;
+  bottom: -20px;
+  left: 30px;
+}
+
+.tutorial-tooltip-arrow.left {
+  border-right-color: #fff;
+  left: -20px;
+  top: 30px;
+}
+
+.tutorial-tooltip-arrow.right {
+  border-left-color: #fff;
+  right: -20px;
+  top: 30px;
+}
+
+.tutorial-title {
+  font-size: 1.05rem;
+  color: #8EA9C4;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.tutorial-description {
+  font-size: 0.85rem;
+  color: #4a4a4a;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.tutorial-progress-text {
+  font-size: 0.7rem;
+  color: #999;
+  margin-bottom: 12px;
+}
+
+.tutorial-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.tutorial-btn-skip {
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.tutorial-btn-next {
+  padding: 8px 20px;
+  background: #C58D98;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.tutorial-btn-next:hover {
+  background: #B07A84;
+}
+
+.tutorial-btn-back {
+  padding: 8px 16px;
+  background: #eee;
+  color: #888;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.tutorial-btn-back:hover {
+  background: #ddd;
+}
+
 .security-modal {
   background: #fff;
   border-radius: 16px;
@@ -1858,6 +1995,10 @@ input:focus, select:focus {
   <div class="security-modal" id="securityModalContent"></div>
 </div>
 
+<div class="tutorial-backdrop" id="tutorialBackdrop"></div>
+<div class="tutorial-highlight" id="tutorialHighlight" style="display:none;"></div>
+<div class="tutorial-tooltip" id="tutorialTooltip" style="display:none;"></div>
+
 <div class="mypage-overlay" id="mypageOverlay">
   <div class="mypage-modal">
     <h2>マイページ</h2>
@@ -1884,6 +2025,9 @@ input:focus, select:focus {
         </div>
       </div>
       <div id="mypageLinkError" style="color:#C58D98;font-size:0.8rem;margin-top:6px;"></div>
+    </div>
+    <div class="mypage-field">
+      <button class="mypage-btn-cancel" onclick="closeMyPage(); setTimeout(startTutorial, 300);" id="mypageTutorialBtn" style="font-size:0.8rem;padding:8px 16px;width:100%;">📖 チュートリアルを再表示</button>
     </div>
     <div class="mypage-buttons">
       <button class="mypage-btn-cancel" onclick="closeMyPage()">キャンセル</button>
@@ -2438,6 +2582,8 @@ function updateStaticText() {
   if (mypageCancelBtn) mypageCancelBtn.textContent = t('btnCancel');
   const mypageSaveBtn = document.querySelector('.mypage-btn-save');
   if (mypageSaveBtn) mypageSaveBtn.textContent = t('btnSave');
+  const mypageTutorialBtn = document.getElementById('mypageTutorialBtn');
+  if (mypageTutorialBtn) mypageTutorialBtn.textContent = currentLang === 'ja' ? '📖 チュートリアルを再表示' : '📖 Replay Tutorial';
 
   updateLangToggleButtons();
 }
@@ -2661,7 +2807,11 @@ async function showAppForUser(user) {
   document.getElementById('unlockScreen').style.display = 'none';
   document.getElementById('appContent').style.display = 'block';
   document.getElementById('userEmail').textContent = user.email || '';
-  initApp();
+  await initApp();
+  // Show tutorial on first visit (after data has loaded)
+  if (shouldShowTutorial()) {
+    setTimeout(() => startTutorial(), 800);
+  }
 }
 
 function showUnlockScreen() {
@@ -2873,6 +3023,214 @@ function openSecurityModal() {
     }, 500);
   }
 })();
+
+// ============================================================
+// Tutorial Tour
+// ============================================================
+
+const TUTORIAL_STEPS_JA = [
+  {
+    selector: 'h1#appTitle',
+    title: '👋 ようこそGrowth Logへ！',
+    desc: '1日のタスクと時間を記録して、自分の成長を可視化するアプリです。まずは基本機能をご紹介します。',
+    placement: 'bottom'
+  },
+  {
+    selector: '.summary',
+    title: '📊 サマリーカード',
+    desc: '今日の合計時間、個人開発時間、勉強時間が一目でわかります。プロジェクト名に「開発」「勉強」を含めると自動集計されます。',
+    placement: 'bottom'
+  },
+  {
+    selector: '#newProject',
+    title: '✨ プロジェクトを作成',
+    desc: 'まずはプロジェクト名を入力。例: 「Webデザイン案件」「英語勉強」「アプリ開発」など自由に作れます。',
+    placement: 'bottom'
+  },
+  {
+    selector: '#taskProjectContainer',
+    title: '📝 タスクを記録',
+    desc: 'プロジェクトを選んでタスク内容と時間を入力。「+ 記録」ボタンで保存できます。',
+    placement: 'bottom'
+  },
+  {
+    selector: '.timer-section',
+    title: '⏱️ タイマーで記録',
+    desc: '作業時間を計測したい時はこちら。「作業開始」を押せばリアルタイムで計測、終わったら自動で記録されます。',
+    placement: 'left'
+  },
+  {
+    selector: '.daily-memo-section',
+    title: '📓 振り返りメモ',
+    desc: '1日の振り返りをメモに残せます。「保存する」を押すとロックされ、後から✎で編集できます。',
+    placement: 'top'
+  },
+  {
+    selector: '.date-nav',
+    title: '📅 日付ナビゲーション',
+    desc: '左右の矢印で過去の日に移動できます。過去の日も編集可能なので、後から記録の追加・修正もできます。',
+    placement: 'bottom'
+  },
+  {
+    selector: '.btn-mypage',
+    title: '👤 マイページ',
+    desc: '表示名の変更、アカウント連携（Google⇔メール/パスワード）はここから。',
+    placement: 'bottom'
+  },
+  {
+    selector: '#langToggle',
+    title: '🌐 言語切替',
+    desc: '日本語/English を切り替えられます。',
+    placement: 'bottom'
+  },
+  {
+    selector: 'h1#appTitle',
+    title: '🎉 準備完了！',
+    desc: 'これで基本機能の説明は終わりです。早速プロジェクトを作って今日のタスクを記録してみましょう！\n\nチュートリアルはマイページから再表示できます。',
+    placement: 'bottom'
+  }
+];
+
+const TUTORIAL_STEPS_EN = [
+  { selector: 'h1#appTitle', title: '👋 Welcome to Growth Log!', desc: 'Record your daily tasks and visualize your growth. Let me show you around.', placement: 'bottom' },
+  { selector: '.summary', title: '📊 Summary Cards', desc: 'See your total time, dev time, and study time at a glance. Projects containing "開発" or "勉強" are auto-counted.', placement: 'bottom' },
+  { selector: '#newProject', title: '✨ Create a Project', desc: 'Enter a project name. E.g., "Web Design", "English Study", "App Development".', placement: 'bottom' },
+  { selector: '#taskProjectContainer', title: '📝 Record a Task', desc: 'Pick a project, enter task content and time, then click "+ Record".', placement: 'bottom' },
+  { selector: '.timer-section', title: '⏱️ Timer Recording', desc: 'Use the timer to track work in real-time. Press "Start" to begin, and time is auto-recorded when done.', placement: 'left' },
+  { selector: '.daily-memo-section', title: '📓 Daily Reflection', desc: 'Write your daily reflection. Press "Save" to lock it, then ✎ to edit later.', placement: 'top' },
+  { selector: '.date-nav', title: '📅 Date Navigation', desc: 'Use arrows to navigate to past days. Past days are editable too, so you can add or fix records later.', placement: 'bottom' },
+  { selector: '.btn-mypage', title: '👤 My Page', desc: 'Change your display name and link accounts (Google ⇔ Email/Password) here.', placement: 'bottom' },
+  { selector: '#langToggle', title: '🌐 Language Toggle', desc: 'Switch between Japanese and English.', placement: 'bottom' },
+  { selector: 'h1#appTitle', title: '🎉 All Set!', desc: 'That\'s the basics! Create your first project and start recording your tasks.\n\nYou can re-open this tutorial from My Page.', placement: 'bottom' }
+];
+
+let tutorialStepIndex = 0;
+let tutorialSteps = TUTORIAL_STEPS_JA;
+
+function startTutorial() {
+  tutorialSteps = currentLang === 'ja' ? TUTORIAL_STEPS_JA : TUTORIAL_STEPS_EN;
+  tutorialStepIndex = 0;
+  document.getElementById('tutorialBackdrop').classList.add('active');
+  showTutorialStep();
+}
+
+function showTutorialStep() {
+  const step = tutorialSteps[tutorialStepIndex];
+  const targetEl = document.querySelector(step.selector);
+  const highlight = document.getElementById('tutorialHighlight');
+  const tooltip = document.getElementById('tutorialTooltip');
+
+  if (!targetEl) {
+    // Skip if element not found
+    tutorialStepIndex++;
+    if (tutorialStepIndex >= tutorialSteps.length) {
+      endTutorial();
+    } else {
+      showTutorialStep();
+    }
+    return;
+  }
+
+  // Scroll into view
+  targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  setTimeout(() => {
+    const rect = targetEl.getBoundingClientRect();
+    const padding = 6;
+    highlight.style.display = 'block';
+    highlight.style.left = (rect.left - padding + window.scrollX) + 'px';
+    highlight.style.top = (rect.top - padding + window.scrollY) + 'px';
+    highlight.style.width = (rect.width + padding * 2) + 'px';
+    highlight.style.height = (rect.height + padding * 2) + 'px';
+
+    // Tooltip content
+    const isLast = tutorialStepIndex === tutorialSteps.length - 1;
+    const isFirst = tutorialStepIndex === 0;
+    const nextLabel = isLast ? (currentLang === 'ja' ? '完了' : 'Done') : (currentLang === 'ja' ? '次へ' : 'Next');
+    const skipLabel = currentLang === 'ja' ? 'スキップ' : 'Skip';
+    const backLabel = currentLang === 'ja' ? '戻る' : 'Back';
+
+    tooltip.innerHTML = `
+      <div class="tutorial-tooltip-arrow"></div>
+      <div class="tutorial-progress-text">${tutorialStepIndex + 1} / ${tutorialSteps.length}</div>
+      <div class="tutorial-title">${step.title}</div>
+      <div class="tutorial-description">${step.desc.replace(/\n/g, '<br>')}</div>
+      <div class="tutorial-buttons">
+        <button class="tutorial-btn-skip" onclick="endTutorial()">${skipLabel}</button>
+        <div style="display:flex;gap:8px;">
+          ${!isFirst ? `<button class="tutorial-btn-back" onclick="prevTutorialStep()">${backLabel}</button>` : ''}
+          <button class="tutorial-btn-next" onclick="nextTutorialStep()">${nextLabel}</button>
+        </div>
+      </div>
+    `;
+
+    tooltip.style.display = 'block';
+
+    // Position tooltip
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const arrow = tooltip.querySelector('.tutorial-tooltip-arrow');
+    arrow.className = 'tutorial-tooltip-arrow';
+
+    let top, left, arrowClass;
+    const placement = step.placement || 'bottom';
+    const margin = 16;
+
+    if (placement === 'bottom') {
+      top = rect.bottom + margin + window.scrollY;
+      left = rect.left + window.scrollX;
+      arrowClass = 'top';
+    } else if (placement === 'top') {
+      top = rect.top - tooltipRect.height - margin + window.scrollY;
+      left = rect.left + window.scrollX;
+      arrowClass = 'bottom';
+    } else if (placement === 'left') {
+      top = rect.top + window.scrollY;
+      left = rect.left - tooltipRect.width - margin + window.scrollX;
+      arrowClass = 'right';
+    } else if (placement === 'right') {
+      top = rect.top + window.scrollY;
+      left = rect.right + margin + window.scrollX;
+      arrowClass = 'left';
+    }
+
+    // Keep tooltip within viewport
+    const maxLeft = window.scrollX + window.innerWidth - tooltipRect.width - 16;
+    if (left < window.scrollX + 16) left = window.scrollX + 16;
+    if (left > maxLeft) left = maxLeft;
+    if (top < window.scrollY + 16) top = window.scrollY + 16;
+
+    tooltip.style.top = top + 'px';
+    tooltip.style.left = left + 'px';
+    arrow.classList.add(arrowClass);
+  }, 350);
+}
+
+function nextTutorialStep() {
+  tutorialStepIndex++;
+  if (tutorialStepIndex >= tutorialSteps.length) {
+    endTutorial();
+  } else {
+    showTutorialStep();
+  }
+}
+
+function prevTutorialStep() {
+  if (tutorialStepIndex > 0) {
+    tutorialStepIndex--;
+    showTutorialStep();
+  }
+}
+
+function endTutorial() {
+  document.getElementById('tutorialBackdrop').classList.remove('active');
+  document.getElementById('tutorialHighlight').style.display = 'none';
+  document.getElementById('tutorialTooltip').style.display = 'none';
+  localStorage.setItem('growth-log-tutorial-seen', '1');
+}
+
+function shouldShowTutorial() {
+  return !localStorage.getItem('growth-log-tutorial-seen');
+}
 
 function closeSecurityModal() {
   document.getElementById('securityOverlay').classList.remove('active');
