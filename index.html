@@ -271,6 +271,77 @@ h1 {
 }
 
 /* My Page Modal */
+.security-link {
+  background: none;
+  border: none;
+  color: #8EA9C4;
+  font-size: 0.75rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 4px 8px;
+}
+
+.security-link:hover {
+  color: #6b8aab;
+}
+
+.security-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  width: 560px;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+}
+
+.security-modal h2 {
+  font-size: 1.2rem;
+  color: #8EA9C4;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.security-modal h3 {
+  font-size: 0.95rem;
+  color: #8EA9C4;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.security-modal p, .security-modal li {
+  font-size: 0.85rem;
+  color: #4a4a4a;
+  line-height: 1.7;
+}
+
+.security-modal ul {
+  padding-left: 20px;
+  margin-bottom: 8px;
+}
+
+.security-modal .warning-box {
+  background: #fef6f0;
+  border-left: 3px solid #C58D98;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 0.85rem;
+  color: #5a4a4a;
+}
+
+.security-modal .info-box {
+  background: #eef4f9;
+  border-left: 3px solid #8EA9C4;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-size: 0.85rem;
+  color: #4a5a6a;
+}
+
 .mypage-overlay {
   display: none;
   position: fixed;
@@ -1628,6 +1699,7 @@ input:focus, select:focus {
     <button onclick="resetPassword()" style="background:none;border:none;color:#C58D98;font-size:0.8rem;cursor:pointer;margin-top:8px;">パスワードを忘れた方はこちら</button>
   </div>
   <div class="login-note">Googleアカウントまたはメールアドレスでログインすると、データがクラウドに保存され、複数デバイスで同期できます。</div>
+  <button class="security-link" onclick="openSecurityModal()" id="loginSecurityLink">🔒 セキュリティと暗号化について</button>
 </div>
 
 <!-- Unlock Screen (shown when logged in but encryption key is missing) -->
@@ -1656,6 +1728,7 @@ input:focus, select:focus {
     <button class="lang-toggle" id="langToggle" onclick="toggleLanguage()">日本語</button>
     <span class="sync-indicator" id="syncIndicator"></span>
     <span class="user-email" id="userEmail"></span>
+    <button class="security-link" onclick="openSecurityModal()" title="セキュリティと暗号化について">🔒</button>
     <button class="btn-mypage" onclick="openMyPage()">マイページ</button>
     <button class="btn-logout" onclick="logout()">ログアウト</button>
   </div>
@@ -1780,6 +1853,10 @@ input:focus, select:focus {
 </div>
 <div id="colorPickerContainer"></div>
 <div id="goalModalContainer"></div>
+
+<div class="mypage-overlay" id="securityOverlay">
+  <div class="security-modal" id="securityModalContent"></div>
+</div>
 
 <div class="mypage-overlay" id="mypageOverlay">
   <div class="mypage-modal">
@@ -2242,6 +2319,13 @@ function changeLanguage(lang) {
   updateTitle();
   if (data) render();
   if (timerState !== 'running') renderTimer();
+  // Update security link text
+  const loginSecLink = document.getElementById('loginSecurityLink');
+  if (loginSecLink) loginSecLink.textContent = currentLang === 'ja' ? '🔒 セキュリティと暗号化について' : '🔒 About Security & Encryption';
+  // Refresh security modal if open
+  if (document.getElementById('securityOverlay').classList.contains('active')) {
+    openSecurityModal();
+  }
 }
 
 function updateStaticText() {
@@ -2773,6 +2857,146 @@ function updateTitle() {
   document.title = name ? name + t('titleSuffix') : t('titleDefault');
 }
 
+function openSecurityModal() {
+  const content = currentLang === 'ja' ? securityContentJa() : securityContentEn();
+  document.getElementById('securityModalContent').innerHTML = content;
+  document.getElementById('securityOverlay').classList.add('active');
+}
+
+function closeSecurityModal() {
+  document.getElementById('securityOverlay').classList.remove('active');
+}
+
+function securityContentJa() {
+  return `
+    <h2>🔒 セキュリティと暗号化について</h2>
+    <div class="info-box">
+      入力したデータは外部に漏れない仕組みになっています。Growth Logのセキュリティ対策を分かりやすく説明します。
+    </div>
+
+    <h3>データの保存先</h3>
+    <p>Google が運営する Firebase Firestore（クラウドデータベース）に保存されます。世界最高水準のセキュリティで保護されています。</p>
+
+    <h3>誰がデータを見れるか</h3>
+    <ul>
+      <li><strong>あなただけ</strong>がアクセスできます</li>
+      <li>他のユーザーから絶対に見えません（Firestoreルールで制御）</li>
+      <li>ログインしていない人はデータベースに一切アクセスできません</li>
+    </ul>
+
+    <h3>🔐 データの暗号化（メール/パスワードログインの場合）</h3>
+    <div class="info-box">
+      メール/パスワードでログインすると、データはあなたのパスワードで<strong>暗号化されて保存</strong>されます。
+    </div>
+    <ul>
+      <li>AES-GCM 256bit（軍事レベルの強度）で暗号化</li>
+      <li>パスワードからPBKDF2（10万回ストレッチ）で暗号化キーを生成</li>
+      <li><strong>開発者（Keiko）でも復号できません</strong></li>
+      <li>Googleの中の人でも復号できません</li>
+    </ul>
+    <div class="warning-box">
+      ⚠️ <strong>重要</strong>: パスワードを忘れると、暗号化されたデータは<strong>永久に復元できません</strong>。パスワードは大切に管理してください。
+    </div>
+
+    <h3>Googleログインの場合</h3>
+    <p>Googleログインを使う場合、データは暗号化されません（パスワードがないため）。ただし、Firestoreルールで他人からのアクセスは防がれています。</p>
+    <p>より高いプライバシーを求める場合は、メール/パスワードでのログインを推奨します。</p>
+
+    <h3>通信の保護</h3>
+    <ul>
+      <li>HTTPSで暗号化通信</li>
+      <li>第三者が通信を傍受しても中身は見えません</li>
+    </ul>
+
+    <h3>不正アクセス対策</h3>
+    <ul>
+      <li>APIキーのリファラー制限: 指定ドメインからのみ使用可能</li>
+      <li>App Check (reCAPTCHA Enterprise): 正規アプリからのリクエストのみ許可</li>
+      <li>外部ツールやスクリプトからのアクセスをブロック</li>
+    </ul>
+
+    <h3>外部サービスへの送信</h3>
+    <p>広告会社、分析サービス等への送信は<strong>一切ありません</strong>。データはFirebase Firestore以外には行きません。</p>
+
+    <h3>ユーザー側で気をつけること</h3>
+    <ul>
+      <li>強いパスワードを設定する（推奨: 12文字以上、英数字記号混合）</li>
+      <li>パスワードを他人に教えない</li>
+      <li>共有PCでログアウトを忘れない</li>
+      <li>Googleログインの場合は2段階認証を有効化</li>
+    </ul>
+
+    <div class="mypage-buttons" style="margin-top:24px;">
+      <button class="mypage-btn-save" onclick="closeSecurityModal()">閉じる</button>
+    </div>
+  `;
+}
+
+function securityContentEn() {
+  return `
+    <h2>🔒 Security & Encryption</h2>
+    <div class="info-box">
+      Your data is protected and never leaked to external parties. Here's how Growth Log keeps your data safe.
+    </div>
+
+    <h3>Where Data is Stored</h3>
+    <p>Data is stored in Google's Firebase Firestore (cloud database), protected by world-class security.</p>
+
+    <h3>Who Can See Your Data</h3>
+    <ul>
+      <li><strong>Only you</strong> can access your data</li>
+      <li>Other users absolutely cannot see it (enforced by Firestore rules)</li>
+      <li>Unauthenticated users cannot access the database at all</li>
+    </ul>
+
+    <h3>🔐 Data Encryption (Email/Password Login)</h3>
+    <div class="info-box">
+      When you log in with email/password, your data is <strong>encrypted with your password</strong> before being stored.
+    </div>
+    <ul>
+      <li>AES-GCM 256bit (military-grade) encryption</li>
+      <li>PBKDF2 (100,000 iterations) key derivation from your password</li>
+      <li><strong>Even the developer (Keiko) cannot decrypt it</strong></li>
+      <li>Even Google employees cannot decrypt it</li>
+    </ul>
+    <div class="warning-box">
+      ⚠️ <strong>Important</strong>: If you forget your password, your encrypted data will be <strong>permanently lost</strong>. Keep your password safe.
+    </div>
+
+    <h3>Google Login</h3>
+    <p>With Google login, data is not encrypted (no password available). However, Firestore rules still prevent access by others.</p>
+    <p>For maximum privacy, we recommend using email/password login.</p>
+
+    <h3>Communication Protection</h3>
+    <ul>
+      <li>All communication is HTTPS encrypted</li>
+      <li>Third parties cannot read intercepted traffic</li>
+    </ul>
+
+    <h3>Unauthorized Access Prevention</h3>
+    <ul>
+      <li>API key referrer restriction: Only authorized domains can use the API</li>
+      <li>App Check (reCAPTCHA Enterprise): Only requests from the legitimate app are allowed</li>
+      <li>External tools and scripts are blocked</li>
+    </ul>
+
+    <h3>External Services</h3>
+    <p>Your data is <strong>never sent</strong> to advertising or analytics services. Data only goes to Firebase Firestore.</p>
+
+    <h3>What You Should Do</h3>
+    <ul>
+      <li>Use a strong password (12+ characters, mix of letters/numbers/symbols)</li>
+      <li>Don't share your password</li>
+      <li>Log out on shared computers</li>
+      <li>Enable 2FA on Google account if using Google login</li>
+    </ul>
+
+    <div class="mypage-buttons" style="margin-top:24px;">
+      <button class="mypage-btn-save" onclick="closeSecurityModal()">Close</button>
+    </div>
+  `;
+}
+
 function openMyPage() {
   document.getElementById('mypageDisplayName').value = userProfile.displayName || '';
   document.getElementById('mypageEmail').textContent = currentUser ? currentUser.email : '';
@@ -2866,6 +3090,8 @@ function closeMyPage() {
 document.addEventListener('click', e => {
   const overlay = document.getElementById('mypageOverlay');
   if (e.target === overlay) closeMyPage();
+  const secOverlay = document.getElementById('securityOverlay');
+  if (e.target === secOverlay) closeSecurityModal();
 });
 
 async function saveMyPage() {
