@@ -3922,6 +3922,7 @@ function addProject() {
   saveData();
   input.value = '';
   render();
+  if (timerState === 'idle') renderTimer();
 }
 
 function addTask() {
