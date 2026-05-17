@@ -3808,6 +3808,18 @@ function clearGoal(type) {
   render();
 }
 
+function getAllProjectsFromHistory() {
+  const projectSet = new Set();
+  // Add current day projects first
+  (data.projects || []).forEach(p => projectSet.add(p));
+  // Add projects from all other days
+  Object.values(allData.days || {}).forEach(dayData => {
+    (dayData.projects || []).forEach(p => projectSet.add(p));
+    (dayData.tasks || []).forEach(t => { if (t.project) projectSet.add(t.project); });
+  });
+  return Array.from(projectSet);
+}
+
 function renderTimer() {
   const container = document.getElementById('timerContent');
   if (timerState === 'idle') {
@@ -3816,7 +3828,7 @@ function renderTimer() {
     html += `<button class="btn-start" onclick="startTimer()">${t('btnStart')}</button>`;
     html += '</div>';
     container.innerHTML = html;
-    createCustomSelect('timerProjectContainer', data.projects, t('selectDefault'));
+    createCustomSelect('timerProjectContainer', getAllProjectsFromHistory(), t('selectDefault'));
   } else if (timerState === 'running') {
     let html = '<div class="timer-running">';
     html += `<div class="timer-project-name">${escapeHtml(timerProject)}${t('timerWorking')}</div>`;
@@ -3872,6 +3884,10 @@ function saveTimerTask(mins) {
   if (!name) { alert(t('alertWriteTask')); return; }
   // Always save timer tasks to today
   const todayData = getDayData(todayKey());
+  // Add project to today's project list if not present
+  if (!todayData.projects.includes(timerProject)) {
+    todayData.projects.push(timerProject);
+  }
   todayData.tasks.push({ project: timerProject, name, time: mins, id: Date.now() });
   allData.days[todayKey()] = todayData;
   if (isToday()) data = todayData;
