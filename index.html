@@ -3824,7 +3824,9 @@ function getAllProjectsFromHistory() {
     (dayData.projects || []).forEach(p => projectSet.add(p));
     (dayData.tasks || []).forEach(t => { if (t.project) projectSet.add(t.project); });
   });
-  return Array.from(projectSet);
+  // Filter out hidden projects
+  const hidden = (userProfile && userProfile.hiddenProjects) || [];
+  return Array.from(projectSet).filter(p => !hidden.includes(p));
 }
 
 function renderTimer() {
@@ -4472,7 +4474,7 @@ function render() {
   const currentVal = getCustomSelectValue('taskProjectContainer');
   const preserveVal = (currentVal && data.projects.includes(currentVal)) ? currentVal : '';
   container.dataset.value = preserveVal;
-  createCustomSelect('taskProjectContainer', data.projects, t('selectDefault'));
+  createCustomSelect('taskProjectContainer', getAllProjectsFromHistory(), t('selectDefault'));
 
   // Summary
   const totalMinutes = data.tasks.reduce((s, t) => s + t.time, 0);
@@ -4854,27 +4856,61 @@ function createCustomSelect(containerId, options, placeholder, onChange) {
 }
 
 function renameProjectFromSelect(oldName, newName) {
-  if (data.projects.includes(newName)) {
+  if (getAllProjectsFromHistory().includes(newName) && newName !== oldName) {
     alert(currentLang === 'ja' ? 'このプロジェクト名は既に存在します。' : 'This project name already exists.');
     return;
   }
-  const idx = data.projects.indexOf(oldName);
-  if (idx !== -1) data.projects[idx] = newName;
-  data.tasks.forEach(t => { if (t.project === oldName) t.project = newName; });
-  if (data.projectColors && data.projectColors[oldName]) {
-    data.projectColors[newName] = data.projectColors[oldName];
-    delete data.projectColors[oldName];
-  }
-  saveData();
+  // Rename across all days (including history)
+  const datesToSave = [];
+  Object.keys(allData.days || {}).forEach(dateKey => {
+    const dayData = allData.days[dateKey];
+    let changed = false;
+    if (dayData.projects) {
+      const idx = dayData.projects.indexOf(oldName);
+      if (idx !== -1) { dayData.projects[idx] = newName; changed = true; }
+    }
+    if (dayData.tasks) {
+      dayData.tasks.forEach(t => { if (t.project === oldName) { t.project = newName; changed = true; } });
+    }
+    if (dayData.projectColors && dayData.projectColors[oldName]) {
+      dayData.projectColors[newName] = dayData.projectColors[oldName];
+      delete dayData.projectColors[oldName];
+      changed = true;
+    }
+    if (changed) datesToSave.push(dateKey);
+  });
+  // Save all changed days
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(allData));
+  datesToSave.forEach(dateKey => saveDayToFirestore(dateKey, allData.days[dateKey]));
+  // Refresh current day reference
+  data = getDayData(viewingDate);
   render();
+  if (timerState === 'idle') renderTimer();
 }
 
 function deleteProjectFromSelect(name) {
+  // Remove from today's data
   data.projects = data.projects.filter(p => p !== name);
   data.tasks = data.tasks.filter(t => t.project !== name);
   if (data.projectColors) delete data.projectColors[name];
   saveData();
+
+  // Check if project still exists in history; if so, add to hidden list
+  const stillInHistory = Object.values(allData.days || {}).some(dayData => {
+    return (dayData.projects || []).includes(name) ||
+           (dayData.tasks || []).some(t => t.project === name);
+  });
+  if (stillInHistory) {
+    if (!userProfile.hiddenProjects) userProfile.hiddenProjects = [];
+    if (!userProfile.hiddenProjects.includes(name)) {
+      userProfile.hiddenProjects.push(name);
+      localStorage.setItem('daily-task-tracker-profile', JSON.stringify(userProfile));
+      saveProfileToFirestore(userProfile);
+    }
+  }
+
   render();
+  if (timerState === 'idle') renderTimer();
 }
 
 function setCustomSelectValue(containerId, value) {
